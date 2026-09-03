@@ -1,0 +1,3 @@
+interface:
+  display_name: "Оформление навыков"
+  short_description: "Создаёт и поддерживает skills в этом репозитории"

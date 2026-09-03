@@ -1,0 +1,11 @@
+2026-09-03T11:26:15.694864Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T11:27:21.444939Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in /Users/ivansosnovich/Documents/codex/skils/benchmarks/go-auth-service/results/long-runs/long-v1-gpt-5.6-luna-20260903/projects/04-sdd-only/internal/app/app.go:
+	Memberships         repository.MembershipStore
+2026-09-03T11:27:56.626333Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in /Users/ivansosnovich/Documents/codex/skils/benchmarks/go-auth-service/results/long-runs/long-v1-gpt-5.6-luna-20260903/projects/04-sdd-only/internal/app/app.go:
+	mux.Handle("/v1/organizations/", httpapi.BearerMiddleware(application.AccessToken, http.HandlerFunc(application.organizationSubresource)))
+	mux.Handle("/v1/invites/", httpapi.BearerMiddleware(application.AccessToken, http.HandlerFunc(application.acceptInvite)))
+2026-09-03T11:28:44.095787Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T11:28:57.612772Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T11:29:04.357123Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T11:29:10.630950Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T11:29:26.084942Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)

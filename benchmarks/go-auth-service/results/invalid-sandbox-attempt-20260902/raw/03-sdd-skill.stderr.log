@@ -1,0 +1,19 @@
+Reading additional input from stdin...
+2026-09-02T12:10:11.481817Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:10:12.285915Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-02T12:10:12.286413Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-02T12:10:12.286819Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-02T12:10:37.519798Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
+2026-09-02T12:10:49.973894Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
+2026-09-02T12:12:36.960253Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
+2026-09-02T12:12:36.978146Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:12:47.797516Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:12:52.396154Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
+2026-09-02T12:12:52.430250Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:12:59.220056Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:13:11.293136Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:13:49.516798Z ERROR codex_core::tools::router: error=exec_command failed for `/bin/zsh -lc "rm -rf /private/tmp/auth-service-state-root && mkdir -p /private/tmp/auth-service-state-root && cp -R openspec /private/tmp/auth-service-state-root/ && python3 /Users/ivansosnovich/Documents/codex/skils/skills/execution-state/scripts/init_execution_state.py --change auth-service --implementation-skill '"'$execution-state'"' --project-root /private/tmp/auth-service-state-root && find /private/tmp/auth-service-state-root/.agents/execution/auth-service -type f -maxdepth 3 -print"`: CreateProcess { message: "Rejected(\"`/bin/zsh -lc \\\"rm -rf /private/tmp/auth-service-state-root && mkdir -p /private/tmp/auth-service-state-root && cp -R openspec /private/tmp/auth-service-state-root/ && python3 /Users/ivansosnovich/Documents/codex/skils/skills/execution-state/scripts/init_execution_state.py --change auth-service --implementation-skill '\\\"'$execution-state'\\\"' --project-root /private/tmp/auth-service-state-root && find /private/tmp/auth-service-state-root/.agents/execution/auth-service -type f -maxdepth 3 -print\\\"` rejected: rm -f style commands are not permitted. Use a safer approach\")" }
+2026-09-02T12:14:32.553764Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:14:40.251490Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:14:51.956003Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T12:15:04.832492Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 97 column 5

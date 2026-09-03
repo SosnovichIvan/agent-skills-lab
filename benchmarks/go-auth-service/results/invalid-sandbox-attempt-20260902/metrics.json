@@ -1,0 +1,67 @@
+{
+  "benchmark": "go-auth-service",
+  "model": "gpt-5.6-luna",
+  "reasoning_effort": "medium",
+  "runs": {
+    "01-skill-standalone": {
+      "started_at": "2026-09-02T12:03:01.882908+00:00",
+      "duration_seconds": 222.327,
+      "exit_code": 0,
+      "usage": {
+        "input_tokens": 470828,
+        "cached_input_tokens": 435712,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 8819,
+        "reasoning_output_tokens": 1724,
+        "total_tokens": 479647
+      },
+      "project": "benchmarks/go-auth-service/projects/01-skill-standalone",
+      "files_created": 2
+    },
+    "02-ai-only": {
+      "started_at": "2026-09-02T12:07:08.554553+00:00",
+      "duration_seconds": 174.394,
+      "exit_code": 0,
+      "usage": {
+        "input_tokens": 203245,
+        "cached_input_tokens": 171520,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7442,
+        "reasoning_output_tokens": 1056,
+        "total_tokens": 210687
+      },
+      "project": "benchmarks/go-auth-service/projects/02-ai-only",
+      "files_created": 7
+    },
+    "03-sdd-skill": {
+      "started_at": "2026-09-02T12:10:11.387189+00:00",
+      "duration_seconds": 307.143,
+      "exit_code": 0,
+      "usage": {
+        "input_tokens": 793488,
+        "cached_input_tokens": 747776,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11656,
+        "reasoning_output_tokens": 2340,
+        "total_tokens": 805144
+      },
+      "project": "benchmarks/go-auth-service/projects/03-sdd-skill",
+      "files_created": 11
+    },
+    "04-sdd-only": {
+      "started_at": "2026-09-02T12:15:27.142095+00:00",
+      "duration_seconds": 297.559,
+      "exit_code": 0,
+      "usage": {
+        "input_tokens": 495865,
+        "cached_input_tokens": 449280,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11011,
+        "reasoning_output_tokens": 1484,
+        "total_tokens": 506876
+      },
+      "project": "benchmarks/go-auth-service/projects/04-sdd-only",
+      "files_created": 14
+    }
+  }
+}
