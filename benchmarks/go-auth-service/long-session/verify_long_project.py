@@ -100,7 +100,7 @@ TASK_MARKERS: dict[str, list[tuple[str, tuple[str, ...]]]] = {
     "7.1": [
         ("owner role", (r"owner",)),
         ("permission vocabulary", (r"org\.read", r"member\.manage")),
-        ("custom role", (r"CustomRole", r"type\s+Role\s+struct")),
+        ("custom role", (r"CustomRole", r"type\s+(?:Organization)?Role\s+struct")),
     ],
     "7.2": [
         ("role route discriminator", (r"parts\[\d+\]\s*==\s*\"roles\"", r"/roles/")),
