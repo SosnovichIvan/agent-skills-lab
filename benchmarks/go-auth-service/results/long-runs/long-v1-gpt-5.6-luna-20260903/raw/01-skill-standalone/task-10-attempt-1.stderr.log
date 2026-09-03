@@ -1,0 +1,15 @@
+2026-09-03T07:31:45.450562Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T07:31:46.136732Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-03T07:31:46.137046Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-03T07:31:46.137238Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-03T07:31:46.137532Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-03T07:31:50.446825Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit
+2026-09-03T07:32:49.182403Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
+2026-09-03T07:33:13.251162Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T07:33:16.426662Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T07:33:23.243001Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T07:33:57.514382Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in /Users/ivansosnovich/Documents/codex/skils/benchmarks/go-auth-service/results/long-runs/long-v1-gpt-5.6-luna-20260903/projects/01-skill-standalone/internal/domain/access_token.go:
+	if claims.Expiry <= clock.Now().UTC().Unix() {
+		return empty, errors.New("invalid access token")
+2026-09-03T07:33:57.534756Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
+2026-09-03T07:34:03.771698Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5

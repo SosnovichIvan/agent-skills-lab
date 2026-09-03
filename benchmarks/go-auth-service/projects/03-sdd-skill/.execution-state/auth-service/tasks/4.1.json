@@ -1,0 +1,26 @@
+{
+  "id": "4.1",
+  "title": "Выполнить gofmt и проверить компиляцию без создания тестов",
+  "status": "complete",
+  "dependencies": [],
+  "source": {
+    "task_ref": "tasks.md#4.1",
+    "requirements": [],
+    "design_refs": []
+  },
+  "done_when": [
+    "OpenSpec task result is implemented and verification evidence is recorded"
+  ],
+  "steps": [],
+  "working_files": [],
+  "artifacts": [],
+  "verification": [
+    "gofmt -w *.go completed",
+    "GOCACHE=/tmp/auth-service-gocache go test ./... passed",
+    "GOCACHE=/tmp/auth-service-gocache go vet ./... passed",
+    "GOCACHE=/tmp/auth-service-gocache go build -o /tmp/auth-service ./... passed"
+  ],
+  "blockers": [],
+  "last_observation": "",
+  "result_summary": "Исходники отформатированы; компиляция проверена без добавления тестовых файлов."
+}

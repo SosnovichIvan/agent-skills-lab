@@ -1,0 +1,23 @@
+{
+  "id": "1.2",
+  "title": "Реализовать безопасное хеширование и проверку паролей",
+  "status": "complete",
+  "dependencies": [],
+  "source": {
+    "task_ref": "tasks.md#1.2",
+    "requirements": [],
+    "design_refs": []
+  },
+  "done_when": [
+    "OpenSpec task result is implemented and verification evidence is recorded"
+  ],
+  "steps": [],
+  "working_files": [],
+  "artifacts": [],
+  "verification": [
+    "go test ./... and go vet ./... passed"
+  ],
+  "blockers": [],
+  "last_observation": "",
+  "result_summary": "Добавлены случайная соль, итеративный HMAC-SHA256 KDF и constant-time comparison без хранения открытого пароля."
+}

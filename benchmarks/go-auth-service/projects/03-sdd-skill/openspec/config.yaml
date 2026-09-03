@@ -1,0 +1,12 @@
+schema: spec-driven
+
+rules:
+  tasks:
+    - Give every executable task a stable unique ID.
+    - Keep each task independently verifiable.
+
+operations:
+  apply:
+    guidance: |
+      Treat tasks.md as the authoritative progress ledger.
+      Mark a task complete only after its implementation has been checked.

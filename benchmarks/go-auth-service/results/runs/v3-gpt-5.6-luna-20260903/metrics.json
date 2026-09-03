@@ -1,0 +1,347 @@
+{
+  "benchmark": "go-auth-service",
+  "protocol_version": 3,
+  "run_id": "v3-gpt-5.6-luna-20260903",
+  "model": "gpt-5.6-luna",
+  "reasoning_effort": "medium",
+  "started_at": "2026-09-03T06:41:48.702454+00:00",
+  "codex_version": "codex-cli 0.147.0",
+  "python_version": "3.9.6",
+  "go_version": "go version go1.25.13 darwin/arm64",
+  "method": "one fresh codex exec per variant; skill variants route one semantic chunk to passthrough",
+  "runs": {
+    "01-skill-standalone": {
+      "status": "complete",
+      "started_at": "2026-09-03T06:41:48.988592+00:00",
+      "project": "benchmarks/go-auth-service/results/runs/v3-gpt-5.6-luna-20260903/projects/01-skill-standalone",
+      "skill": true,
+      "sdd": false,
+      "expected_profile": "passthrough",
+      "finished_at": "2026-09-03T06:44:34.645394+00:00",
+      "exit_code": 0,
+      "agent_duration_seconds": 160.593,
+      "total_duration_seconds": 165.655,
+      "usage": {
+        "input_tokens": 185978,
+        "cached_input_tokens": 165632,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 6250,
+        "reasoning_output_tokens": 710,
+        "total_tokens": 192228
+      },
+      "event_counts": {
+        "thread.started": 1,
+        "turn.started": 1,
+        "item.completed": 18,
+        "item.started": 13,
+        "turn.completed": 1
+      },
+      "item_stats": {
+        "agent_messages": 5,
+        "command_executions": 8,
+        "command_output_chars": 10762,
+        "file_changes": 5
+      },
+      "verification": {
+        "passed": true,
+        "duration_seconds": 5.062,
+        "go_test": {
+          "exit_code": 0,
+          "stdout": "?   \texample.com/authservice\t[no test files]\n",
+          "stderr": ""
+        },
+        "go_vet": {
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "go_files": 6,
+        "go_mod_present": true,
+        "standard_library_only": true,
+        "gofmt_exit_code": 0,
+        "test_files": [],
+        "unformatted": [],
+        "expected_markers": {
+          "register": true,
+          "login": true,
+          "me": true,
+          "hmac_sha256": true,
+          "constant_time": true,
+          "graceful_shutdown": true
+        },
+        "openspec_tasks": null
+      },
+      "execution_state_created": false,
+      "profile_observed": "passthrough-or-no-skill",
+      "files_created": 7
+    },
+    "02-ai-only": {
+      "status": "complete",
+      "started_at": "2026-09-03T06:44:34.646340+00:00",
+      "project": "benchmarks/go-auth-service/results/runs/v3-gpt-5.6-luna-20260903/projects/02-ai-only",
+      "skill": false,
+      "sdd": false,
+      "expected_profile": null,
+      "finished_at": "2026-09-03T06:47:56.803425+00:00",
+      "exit_code": 0,
+      "agent_duration_seconds": 201.703,
+      "total_duration_seconds": 202.154,
+      "usage": {
+        "input_tokens": 236615,
+        "cached_input_tokens": 192768,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 9233,
+        "reasoning_output_tokens": 1614,
+        "total_tokens": 245848
+      },
+      "event_counts": {
+        "thread.started": 1,
+        "turn.started": 1,
+        "item.completed": 19,
+        "item.started": 13,
+        "turn.completed": 1
+      },
+      "item_stats": {
+        "agent_messages": 6,
+        "command_executions": 8,
+        "command_output_chars": 18931,
+        "file_changes": 5
+      },
+      "verification": {
+        "passed": true,
+        "duration_seconds": 0.451,
+        "go_test": {
+          "exit_code": 0,
+          "stdout": "?   \tauthservice/cmd/authservice\t[no test files]\n?   \tauthservice/internal/config\t[no test files]\n?   \tauthservice/internal/password\t[no test files]\n?   \tauthservice/internal/repository\t[no test files]\n?   \tauthservice/internal/service\t[no test files]\n?   \tauthservice/internal/token\t[no test files]\n?   \tauthservice/internal/transport\t[no test files]\n",
+          "stderr": ""
+        },
+        "go_vet": {
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "go_files": 7,
+        "go_mod_present": true,
+        "standard_library_only": true,
+        "gofmt_exit_code": 0,
+        "test_files": [],
+        "unformatted": [],
+        "expected_markers": {
+          "register": true,
+          "login": true,
+          "me": true,
+          "hmac_sha256": true,
+          "constant_time": true,
+          "graceful_shutdown": true
+        },
+        "openspec_tasks": null
+      },
+      "execution_state_created": false,
+      "profile_observed": "passthrough-or-no-skill",
+      "files_created": 8
+    },
+    "03-sdd-skill": {
+      "status": "complete",
+      "started_at": "2026-09-03T06:47:56.808458+00:00",
+      "project": "benchmarks/go-auth-service/results/runs/v3-gpt-5.6-luna-20260903/projects/03-sdd-skill",
+      "skill": true,
+      "sdd": true,
+      "expected_profile": "passthrough",
+      "finished_at": "2026-09-03T06:51:13.073866+00:00",
+      "exit_code": 0,
+      "agent_duration_seconds": 195.911,
+      "total_duration_seconds": 196.261,
+      "usage": {
+        "input_tokens": 282337,
+        "cached_input_tokens": 259584,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 8370,
+        "reasoning_output_tokens": 815,
+        "total_tokens": 290707
+      },
+      "event_counts": {
+        "thread.started": 1,
+        "turn.started": 1,
+        "item.completed": 21,
+        "item.started": 14,
+        "turn.completed": 1
+      },
+      "item_stats": {
+        "agent_messages": 7,
+        "command_executions": 10,
+        "command_output_chars": 10689,
+        "file_changes": 4
+      },
+      "verification": {
+        "passed": true,
+        "duration_seconds": 0.35,
+        "go_test": {
+          "exit_code": 0,
+          "stdout": "?   \tauth-service\t[no test files]\n",
+          "stderr": ""
+        },
+        "go_vet": {
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "go_files": 8,
+        "go_mod_present": true,
+        "standard_library_only": true,
+        "gofmt_exit_code": 0,
+        "test_files": [],
+        "unformatted": [],
+        "expected_markers": {
+          "register": true,
+          "login": true,
+          "me": true,
+          "hmac_sha256": true,
+          "constant_time": true,
+          "graceful_shutdown": true
+        },
+        "openspec_tasks": {
+          "complete": 7,
+          "pending": 0
+        }
+      },
+      "execution_state_created": false,
+      "profile_observed": "passthrough-or-no-skill",
+      "files_created": 14
+    },
+    "04-sdd-only": {
+      "status": "complete",
+      "started_at": "2026-09-03T06:51:13.079234+00:00",
+      "project": "benchmarks/go-auth-service/results/runs/v3-gpt-5.6-luna-20260903/projects/04-sdd-only",
+      "skill": false,
+      "sdd": true,
+      "expected_profile": null,
+      "finished_at": "2026-09-03T06:54:55.543633+00:00",
+      "exit_code": 0,
+      "agent_duration_seconds": 222.049,
+      "total_duration_seconds": 222.461,
+      "usage": {
+        "input_tokens": 288908,
+        "cached_input_tokens": 245248,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 9408,
+        "reasoning_output_tokens": 1295,
+        "total_tokens": 298316
+      },
+      "event_counts": {
+        "thread.started": 1,
+        "turn.started": 1,
+        "item.completed": 22,
+        "item.started": 15,
+        "turn.completed": 1
+      },
+      "item_stats": {
+        "agent_messages": 7,
+        "command_executions": 9,
+        "command_output_chars": 25696,
+        "file_changes": 6
+      },
+      "verification": {
+        "passed": true,
+        "duration_seconds": 0.412,
+        "go_test": {
+          "exit_code": 0,
+          "stdout": "?   \tauthservice/cmd/auth-service\t[no test files]\n?   \tauthservice/internal/auth\t[no test files]\n",
+          "stderr": ""
+        },
+        "go_vet": {
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "go_files": 8,
+        "go_mod_present": true,
+        "standard_library_only": true,
+        "gofmt_exit_code": 0,
+        "test_files": [],
+        "unformatted": [],
+        "expected_markers": {
+          "register": true,
+          "login": true,
+          "me": true,
+          "hmac_sha256": true,
+          "constant_time": true,
+          "graceful_shutdown": true
+        },
+        "openspec_tasks": {
+          "complete": 7,
+          "pending": 0
+        }
+      },
+      "execution_state_created": false,
+      "profile_observed": "passthrough-or-no-skill",
+      "files_created": 14
+    }
+  },
+  "finished_at": "2026-09-03T06:54:55.544087+00:00",
+  "comparisons": {
+    "standalone": {
+      "skill_variant": "01-skill-standalone",
+      "baseline_variant": "02-ai-only",
+      "agent_duration_seconds": {
+        "absolute": -41.11,
+        "percent": -20.381
+      },
+      "total_tokens": {
+        "absolute": -53620,
+        "percent": -21.81
+      },
+      "input_tokens": {
+        "absolute": -50637,
+        "percent": -21.401
+      },
+      "cached_input_tokens": {
+        "absolute": -27136,
+        "percent": -14.077
+      },
+      "output_tokens": {
+        "absolute": -2983,
+        "percent": -32.308
+      },
+      "command_executions": {
+        "absolute": 0,
+        "percent": 0.0
+      },
+      "command_output_chars": {
+        "absolute": -8169,
+        "percent": -43.151
+      }
+    },
+    "openspec": {
+      "skill_variant": "03-sdd-skill",
+      "baseline_variant": "04-sdd-only",
+      "agent_duration_seconds": {
+        "absolute": -26.138,
+        "percent": -11.771
+      },
+      "total_tokens": {
+        "absolute": -7609,
+        "percent": -2.551
+      },
+      "input_tokens": {
+        "absolute": -6571,
+        "percent": -2.274
+      },
+      "cached_input_tokens": {
+        "absolute": 14336,
+        "percent": 5.846
+      },
+      "output_tokens": {
+        "absolute": -1038,
+        "percent": -11.033
+      },
+      "command_executions": {
+        "absolute": 1,
+        "percent": 11.111
+      },
+      "command_output_chars": {
+        "absolute": -15007,
+        "percent": -58.402
+      }
+    }
+  }
+}
