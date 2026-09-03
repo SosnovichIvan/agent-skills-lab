@@ -18,10 +18,14 @@ OpenSpec-артефакты являются источниками уже ре�
 - выполни `gofmt`, `go test ./...` и `go vet ./...` перед завершением;
 - финальный ответ должен соответствовать переданной JSON Schema и повторять
   `run_id`, `based_on_revision` и `task_id` из packet.
+- соблюдай `quality.invariants`, `task.contracts` и все
+  `task.regression_checks`;
+- используй packet context как навигационную карту, а не как источник
+  требований;
+- верни compact `context_updates` для существенно изменённых файлов.
 
 ## Worker packet
 
 ```json
 {{PACKET_JSON}}
 ```
-

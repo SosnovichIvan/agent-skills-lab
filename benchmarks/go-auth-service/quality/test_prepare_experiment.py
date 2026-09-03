@@ -48,7 +48,7 @@ class PrepareExperimentTests(unittest.TestCase):
     def test_prepare_writes_immutable_manifest_and_catalog(self) -> None:
         repo_root = Path(__file__).resolve().parents[3]
         candidate = subprocess.run(
-            ["git", "rev-parse", "HEAD^"], cwd=repo_root, text=True,
+            ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True,
             capture_output=True, check=True,
         ).stdout.strip()
         with tempfile.TemporaryDirectory() as temporary:

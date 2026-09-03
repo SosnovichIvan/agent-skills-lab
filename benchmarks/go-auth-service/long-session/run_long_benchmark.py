@@ -21,7 +21,7 @@ from typing import Any
 from verify_long_project import verify
 
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 BENCHMARK_MODEL = "gpt-5.6-luna"
 BENCHMARK_REASONING_EFFORT = "medium"
 MAX_ATTEMPTS_PER_TASK = 2
@@ -66,6 +66,11 @@ def safe_run_id(value: str) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--variant", action="append", choices=VARIANTS)
+    parser.add_argument("--tasks-file", type=Path)
+    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--skill-path", type=Path)
+    parser.add_argument("--worker-schema", type=Path)
+    parser.add_argument("--behavior-verifier", type=Path)
     parser.add_argument("--timeout", type=int, default=1200)
     parser.add_argument(
         "--restart-incomplete",
@@ -101,7 +106,7 @@ def save_json(path: Path, value: dict[str, Any]) -> None:
 def load_tasks(path: Path) -> list[dict[str, Any]]:
     payload = read_json(path)
     tasks = payload.get("tasks")
-    if payload.get("schema_version") != 1 or not isinstance(tasks, list):
+    if payload.get("schema_version") not in {1, 2} or not isinstance(tasks, list):
         raise RuntimeError("invalid long-session task catalog")
     if len(tasks) != 32:
         raise RuntimeError(f"long-session benchmark requires 32 tasks, found {len(tasks)}")
@@ -245,6 +250,11 @@ def aggregate_variant(run: dict[str, Any]) -> dict[str, Any]:
             duration += float(attempt.get("duration_seconds", 0))
             for key in total:
                 total[key] += int(attempt.get("usage", {}).get(key, 0))
+    for review in run.get("reviews", []):
+        attempts += 1
+        duration += float(review.get("duration_seconds", 0))
+        for key in total:
+            total[key] += int(review.get("usage", {}).get(key, 0))
     return {
         "duration_seconds": round(duration, 3),
         "usage": total,
@@ -292,8 +302,12 @@ def initial_codex_command(
     return command
 
 
-def resume_codex_command(session_id: str, last_message: Path) -> list[str]:
-    return [
+def resume_codex_command(
+    session_id: str,
+    last_message: Path,
+    output_schema: Path | None = None,
+) -> list[str]:
+    command = [
         "codex",
         "-a",
         "never",
@@ -309,11 +323,11 @@ def resume_codex_command(session_id: str, last_message: Path) -> list[str]:
         BENCHMARK_MODEL,
         "-c",
         f'model_reasoning_effort="{BENCHMARK_REASONING_EFFORT}"',
-        "-o",
-        str(last_message),
-        session_id,
-        "-",
     ]
+    if output_schema is not None:
+        command.extend(["--output-schema", str(output_schema)])
+    command.extend(["-o", str(last_message), session_id, "-"])
+    return command
 
 
 def run_codex(
@@ -390,6 +404,25 @@ def run_statectl(statectl: Path, project: Path, arguments: list[str]) -> dict[st
     return json.loads(completed.stdout)
 
 
+def run_behavior_verifier(script: Path, project: Path, timeout: int) -> dict[str, Any]:
+    completed = subprocess.run(
+        [sys.executable, str(script), "--project", str(project), "--timeout", str(timeout)],
+        cwd=project,
+        text=True,
+        capture_output=True,
+        timeout=timeout + 30,
+        check=False,
+    )
+    try:
+        report = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        report = {"passed": False, "parse_error": completed.stdout[-1000:]}
+    report["exit_code"] = completed.returncode
+    if completed.stderr:
+        report["stderr"] = completed.stderr[-2000:]
+    return report
+
+
 def state_path(project: Path, state_id: str) -> Path:
     return project / ".execution-state" / state_id / "state.json"
 
@@ -400,6 +433,7 @@ def initialize_state(
     state_id: str,
     variant: dict[str, Any],
     tasks_path: Path,
+    quality_runtime: bool,
 ) -> dict[str, Any]:
     arguments = [
         "init",
@@ -426,6 +460,12 @@ def initialize_state(
         "--adapter",
         "codex",
     ]
+    if quality_runtime:
+        arguments[arguments.index("--adapter"):arguments.index("--adapter")] = [
+            "--invariant", "Все обязательные HTTP routes должны оставаться достижимыми",
+            "--invariant", "Request ID и error envelope должны оставаться согласованными",
+            "--invariant", "Idempotency fingerprint обязан учитывать request body",
+        ]
     if variant["sdd"]:
         arguments.extend(
             [
@@ -440,6 +480,10 @@ def initialize_state(
     return run_statectl(statectl, project, arguments)
 
 
+def supports_quality_state(statectl: Path) -> bool:
+    return "SCHEMA_VERSION = 4" in statectl.read_text(encoding="utf-8")
+
+
 def parse_worker_result(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8").strip()
     if text.startswith("```"):
@@ -452,8 +496,13 @@ def parse_worker_result(path: Path) -> dict[str, Any]:
 
 
 def worker_result_matches(result: dict[str, Any], packet: dict[str, Any]) -> tuple[bool, str]:
+    result_protocol = (
+        "execution-state.result/v2"
+        if packet.get("protocol") == "execution-state.worker/v2"
+        else "execution-state.result/v1"
+    )
     expected = {
-        "protocol": "execution-state.result/v1",
+        "protocol": result_protocol,
         "run_id": packet["run_id"],
         "based_on_revision": packet["based_on_revision"],
         "task_id": packet["task"]["id"],
@@ -557,7 +606,8 @@ def run_skill_task(
     output_schema: Path,
     raw: Path,
     timeout: int,
-) -> dict[str, Any]:
+    session_id: str | None,
+) -> tuple[dict[str, Any], str | None]:
     state_file = state_path(project, state_id)
     current = read_json(state_file)
     if current.get("active_task", {}).get("id") != task["id"]:
@@ -604,19 +654,21 @@ def run_skill_task(
         stderr_path = prefix.with_suffix(".stderr.log")
         last_message = prefix.with_suffix(".last-message.json")
         prompt_path.write_text(prompt, encoding="utf-8")
+        command = (
+            initial_codex_command(project, last_message, ephemeral=False, output_schema=output_schema)
+            if session_id is None
+            else resume_codex_command(session_id, last_message, output_schema)
+        )
         attempt = run_codex(
-            initial_codex_command(
-                project,
-                last_message,
-                ephemeral=True,
-                output_schema=output_schema,
-            ),
+            command,
             prompt,
             project,
             timeout,
             stdout_path,
             stderr_path,
         )
+        if attempt.get("thread_id"):
+            session_id = attempt["thread_id"]
         protocol_error = ""
         parsed: dict[str, Any] | None = None
         if last_message.is_file():
@@ -640,34 +692,64 @@ def run_skill_task(
         repair = repair_suffix(final_verification, protocol_error)
 
     if accepted_result is None:
-        return {
+        return ({
             "task_id": task["id"],
             "status": "failed",
             "attempts": attempts,
             "packet_bytes": packet_path.stat().st_size,
             "state_bytes": state_file.stat().st_size,
             "packet_revision": packet_result["revision"],
-        }
+        }, session_id)
+    completion_arguments = [
+        "complete",
+        "--id",
+        state_id,
+        "--project-root",
+        str(project),
+        "--expected-revision",
+        str(packet["based_on_revision"]),
+        "--run-id",
+        worker_run_id,
+        "--summary",
+        accepted_result["summary"][:1000],
+    ]
+    regression_checks = packet.get("task", {}).get("regression_checks", [])
+    if regression_checks:
+        for check_id in regression_checks:
+            completion_arguments.extend(
+                [
+                    "--check-json",
+                    json.dumps(
+                        {
+                            "id": check_id,
+                            "status": "passed",
+                            "summary": f"external compile/static gate passed for {task['id']}",
+                        },
+                        ensure_ascii=False,
+                    ),
+                ]
+            )
+    else:
+        completion_arguments.extend(
+            ["--evidence", f"external compile/static gate passed for {task['id']}"]
+        )
     completion = run_statectl(
         statectl,
         project,
-        [
-            "complete",
-            "--id",
-            state_id,
-            "--project-root",
-            str(project),
-            "--expected-revision",
-            str(packet["based_on_revision"]),
-            "--run-id",
-            worker_run_id,
-            "--summary",
-            accepted_result["summary"][:1000],
-            "--evidence",
-            f"external compile/static gate passed for {task['id']}",
-        ],
+        completion_arguments,
     )
-    return {
+    context_updates = accepted_result.get("context_updates", [])
+    for entry in context_updates:
+        run_statectl(
+            statectl,
+            project,
+            [
+                "context-map-update", "--id", state_id, "--project-root", str(project),
+                "--expected-revision", str(completion["revision"]),
+                "--entry-json", json.dumps(entry, ensure_ascii=False),
+            ],
+        )
+    return ({
         "task_id": task["id"],
         "status": "complete",
         "attempts": attempts,
@@ -675,8 +757,61 @@ def run_skill_task(
         "state_bytes": state_file.stat().st_size,
         "packet_revision": packet_result["revision"],
         "completion_revision": completion["revision"],
+        "next_handoff": completion.get("next_handoff"),
+        "review_required": completion.get("review_required", False),
         "verification": final_verification,
-    }
+    }, session_id)
+
+
+def run_architecture_review(
+    *,
+    project: Path,
+    state_id: str,
+    statectl: Path,
+    prompt_template: Path,
+    raw: Path,
+    review_number: int,
+    timeout: int,
+) -> dict[str, Any]:
+    state_file = state_path(project, state_id)
+    state = read_json(state_file)
+    reasons = state.get("quality", {}).get("review_reasons", [])
+    prompt = render(
+        prompt_template,
+        {
+            "STATE_PATH": str(state_file.relative_to(project)),
+            "REVIEW_REASONS": json.dumps(reasons, ensure_ascii=False),
+        },
+    )
+    prefix = raw / f"architecture-review-{review_number:02d}"
+    prefix.with_suffix(".prompt.md").write_text(prompt, encoding="utf-8")
+    last_message = prefix.with_suffix(".last-message.md")
+    result = run_codex(
+        initial_codex_command(project, last_message, ephemeral=True),
+        prompt,
+        project,
+        timeout,
+        prefix.with_suffix(".jsonl"),
+        prefix.with_suffix(".stderr.log"),
+    )
+    answer = last_message.read_text(encoding="utf-8").strip() if last_message.is_file() else ""
+    if result["exit_code"] != 0 or not answer:
+        result["status"] = "failed"
+        result["error"] = "architecture reviewer did not return a usable result"
+        return result
+    command = run_statectl(
+        statectl,
+        project,
+        [
+            "architecture-review", "--id", state_id, "--project-root", str(project),
+            "--expected-revision", str(state["revision"]),
+            "--summary", answer[:900],
+            "--evidence", "independent reviewer ran gofmt, go test and go vet",
+        ],
+    )
+    result["status"] = "complete"
+    result["controller"] = command
+    return result
 
 
 def baseline_prompt(
@@ -821,16 +956,18 @@ def main() -> int:
     root = Path(__file__).resolve().parent
     benchmark_root = root.parent
     repo_root = benchmark_root.parents[1]
-    skill_path = repo_root / "skills" / "execution-state"
+    skill_path = (args.skill_path or (repo_root / "skills" / "execution-state")).resolve()
     statectl = skill_path / "scripts" / "statectl.py"
+    quality_runtime = supports_quality_state(statectl)
     requirements = root / "requirements.md"
-    tasks_path = root / "tasks.json"
+    tasks_path = (args.tasks_file or (root / "tasks.json")).resolve()
     prompts = root / "prompts"
-    output_schema = root / "worker-result.schema.json"
+    output_schema = (args.worker_schema or (root / "worker-result.schema.json")).resolve()
     openspec_template = root / "openspec-template"
     tasks = load_tasks(tasks_path)
     definition_hash = catalog_hash(requirements, tasks_path)
-    run_root = benchmark_root / "results" / "long-runs" / run_id
+    output_root = (args.output_root or (benchmark_root / "results" / "long-runs")).resolve()
+    run_root = output_root / run_id
     projects = run_root / "projects"
     raw_root = run_root / "raw"
     metrics_path = run_root / "metrics.json"
@@ -891,6 +1028,7 @@ def main() -> int:
                 "project": str(project.relative_to(repo_root)),
                 **variant,
                 "chunks": [],
+                "reviews": [],
                 "session_id": None,
             }
             metrics["runs"][name] = run
@@ -911,7 +1049,7 @@ def main() -> int:
                 state_id = "iam-long-" + ("openspec" if variant["sdd"] else "standalone")
                 run["state_id"] = state_id
                 run["state_init"] = initialize_state(
-                    statectl, project, state_id, variant, tasks_path
+                    statectl, project, state_id, variant, tasks_path, quality_runtime
                 )
             run["status"] = "running"
             save_json(metrics_path, metrics)
@@ -1016,7 +1154,17 @@ def main() -> int:
             task = tasks[task_index]
             print(f"{name} task {task_index + 1:02d}/32 {task['id']}...", flush=True)
             if variant["skill"]:
-                chunk = run_skill_task(
+                previous_task = tasks[task_index - 1] if task_index > 0 else None
+                same_cohesion = bool(
+                    previous_task
+                    and quality_runtime
+                    and previous_task.get("cohesion_key")
+                    and task.get("cohesion_key")
+                    and previous_task.get("cohesion_key") == task.get("cohesion_key")
+                )
+                if not same_cohesion:
+                    session_id = None
+                chunk, session_id = run_skill_task(
                     project=project,
                     task=task,
                     task_index=task_index,
@@ -1026,7 +1174,9 @@ def main() -> int:
                     output_schema=output_schema,
                     raw=raw,
                     timeout=args.timeout,
+                    session_id=session_id,
                 )
+                run["session_id"] = session_id
             else:
                 chunk, session_id = run_baseline_task(
                     project=project,
@@ -1049,6 +1199,26 @@ def main() -> int:
                 save_json(metrics_path, metrics)
                 any_failed = True
                 break
+            if variant["skill"] and chunk.get("review_required"):
+                print(f"{name} architecture review after {task['id']}...", flush=True)
+                review = run_architecture_review(
+                    project=project,
+                    state_id=run["state_id"],
+                    statectl=statectl,
+                    prompt_template=benchmark_root / "quality" / "prompts" / "architecture-review.md",
+                    raw=raw,
+                    review_number=len(run.get("reviews", [])) + 1,
+                    timeout=args.timeout,
+                )
+                run.setdefault("reviews", []).append(review)
+                run["totals"] = aggregate_variant(run)
+                save_json(metrics_path, metrics)
+                if review["status"] != "complete":
+                    run["status"] = "failed"
+                    run["failure"] = f"architecture review failed after {task['id']}"
+                    save_json(metrics_path, metrics)
+                    any_failed = True
+                    break
             print(
                 f"completed {name} {task['id']}: "
                 f"tokens={sum(a['usage']['total_tokens'] for a in chunk['attempts'])}",
@@ -1058,6 +1228,11 @@ def main() -> int:
             continue
         final_verification = verify(project, tasks[-1]["id"], True, timeout=180)
         run["final_verification"] = final_verification
+        behavior_ok = True
+        if args.behavior_verifier and not variant["sdd"]:
+            behavior = run_behavior_verifier(args.behavior_verifier.resolve(), project, 180)
+            run["behavior_verification"] = behavior
+            behavior_ok = bool(behavior.get("passed"))
         if variant["sdd"]:
             checkbox_ok, checkbox_error = expected_checkbox_state(project, tasks, len(tasks))
             run["openspec_complete"] = checkbox_ok
@@ -1079,7 +1254,7 @@ def main() -> int:
         run["finished_at"] = utc_now()
         run["status"] = (
             "complete"
-            if final_verification["passed"] and checkbox_ok and state_ok
+            if final_verification["passed"] and behavior_ok and checkbox_ok and state_ok
             else "failed"
         )
         if run["status"] != "complete":
