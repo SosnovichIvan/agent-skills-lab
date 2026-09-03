@@ -4,6 +4,10 @@
 компактное проверяемое состояние между semantic chunks и может передавать
 работу в новый context без transcript.
 
+Текущая версия schema v4 добавляет quality contracts: глобальные инварианты,
+именованные regression checks, компактную context map, integration bridge,
+периодический architecture review и adaptive handoff по cohesion key.
+
 Core не зависит от Codex, Claude, Gemini или модели. Agent CLI подключается
 через capability-based adapter; OpenSpec является отдельным источником задач и
 не влияет на выбор runtime.
@@ -114,6 +118,7 @@ reset дополнительно проверь `<cli> --help` и сформир
 - [Универсальный пользовательский prompt](prompts/use-execution-state.md)
 - [Интеграция в документацию OpenSpec](prompts/openspec-documentation-integration.md)
 - [Worker prompt новой сессии](prompts/worker.md)
+- [Architecture/integration review prompt](prompts/review-quality.md)
 - [Инструкции skill](SKILL.md)
 
 Единственный публичный helper — `scripts/statectl.py`. Он выбирает route,
@@ -125,6 +130,35 @@ reset дополнительно проверь `<cli> --help` и сформир
 только вместе с соответствующим `--id` либо `--state`. Результат worker
 принимается через `observe`, `complete` или `block` с новой revision и тем же
 `--run-id`; повторный packet до снятия lease отклоняется.
+
+Для сложной standalone-задачи task JSON может включать:
+
+```json
+{
+  "id": "auth-idempotency",
+  "title": "Исправить replay регистрации",
+  "done_when": ["Повтор возвращает исходный ответ"],
+  "kind": "implementation",
+  "cohesion_key": "auth-http",
+  "affected_areas": ["auth", "http"],
+  "reads": ["internal/app/app.go"],
+  "writes": ["internal/app/protection.go"],
+  "contracts": ["одинаковый key с другим body возвращает conflict"],
+  "regression_checks": ["idempotency-replay", "idempotency-conflict"],
+  "requires_bridge": true
+}
+```
+
+`complete` примет такую задачу только с passed structured check для каждого ID.
+После cross-area изменения следующий task должен иметь `kind=integration`.
+Каждые восемь chunks по умолчанию требуется `architecture-review`. Команда
+`context-map-update` сохраняет только path/purpose/areas/symbols, а worker packet
+выбирает из карты максимум 16 релевантных записей.
+
+Существующий незавершённый state schema v3 обновляется только явной командой
+`statectl migrate --expected-revision <N>`. Миграция повышает revision и
+отклоняется при активном worker lease, поэтому незаметного переписывания state
+нет.
 
 Для стороннего CLI передай `--adapter <ID> --manifest <PATH>` и только после
 проверки manifest добавь `--trust-custom-adapter`. Этот флаг разрешает безопасный
@@ -138,6 +172,22 @@ permissions или другие внешние действия.
 - [CLI adapters](references/cli-adapters.md);
 - [OpenSpec-lite](references/openspec-integration.md);
 - [worker protocol](references/worker-protocol.md).
+
+## Новая методика экспериментов
+
+Все следующие эксперименты выполняются только без SDD/OpenSpec: предыдущая
+версия skill как control, новая версия как candidate и обычный AI как baseline.
+Каждый вариант стартует в пустом проекте и новой session; контрольная модель —
+`gpt-5.6-luna`, reasoning effort `medium`. OpenSpec остаётся поддерживаемым
+режимом продукта, но исключён из новых измерений, чтобы не смешивать эффект SDD
+с эффектом execution state. Полный зафиксированный протокол:
+[standalone quality benchmark](../../benchmarks/go-auth-service/quality/README.md).
+
+Новый внешний black-box verifier проверяет request ID, безопасный idempotent
+replay, конфликт изменённого body, создание и назначение custom role. На старых
+long-session артефактах он ожидаемо выявляет ранее пропущенные defects, поэтому
+старый `Final gate: Да` следует читать только как compile/static gate, а не как
+доказательство функциональной корректности.
 
 ## Long-session benchmark: 32 semantic chunks
 

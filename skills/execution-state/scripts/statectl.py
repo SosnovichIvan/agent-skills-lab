@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor-neutral execution-state v3 controller.
+"""Vendor-neutral execution-state v4 controller.
 
 The controller owns compact state transitions.  It does not contain prompts,
 run agent CLIs, clear a model context, or interpret implementation references.
@@ -36,10 +36,11 @@ from cli_adapters import (
 )
 
 
-SCHEMA_VERSION = 3
-TASK_LEDGER_VERSION = 1
-PACKET_VERSION = 1
-WORKER_PROTOCOL = "execution-state.worker/v1"
+SCHEMA_VERSION = 4
+TASK_LEDGER_VERSION = 2
+PACKET_VERSION = 2
+WORKER_PROTOCOL = "execution-state.worker/v2"
+CONTEXT_MAP_VERSION = 1
 MAX_STATE_BYTES = 8 * 1024
 MAX_PACKET_BYTES = 12 * 1024
 MAX_OBSERVATION_BYTES = 2 * 1024
@@ -51,6 +52,7 @@ STATE_STATUSES = {"planned", "in_progress", "blocked", "complete"}
 TASK_STATUSES = {"pending", "in_progress", "blocked", "complete"}
 SOURCE_KINDS = {"standalone", "openspec"}
 EXECUTION_PROFILES = {"lite", "reset"}
+TASK_KINDS = {"implementation", "integration", "architecture", "verification"}
 ERROR_INVALID = 3
 ERROR_CONFLICT = 4
 ERROR_RUNTIME = 5
@@ -154,6 +156,37 @@ def _evidence_list(value: Any, field: str = "evidence") -> list[str]:
     if sum(_byte_len(item) for item in evidence) > MAX_EVIDENCE_BYTES:
         raise StateCtlError(f"{field} exceeds {MAX_EVIDENCE_BYTES} bytes in total")
     return evidence
+
+
+def _check_list(value: Any, field: str = "checks") -> list[dict[str, str]]:
+    if not isinstance(value, list) or len(value) > 16:
+        raise StateCtlError(f"{field} must be a list with at most 16 items")
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, item in enumerate(value):
+        if not isinstance(item, dict) or set(item) != {"id", "status", "summary"}:
+            raise StateCtlError(f"{field}[{index}] fields are invalid")
+        check_id = _safe_id(item.get("id"), f"{field}[{index}].id")
+        if check_id in seen:
+            raise StateCtlError(f"duplicate check id in {field}: {check_id}")
+        seen.add(check_id)
+        status = item.get("status")
+        if status not in {"passed", "failed"}:
+            raise StateCtlError(f"{field}[{index}].status must be passed or failed")
+        summary = _require_text(item.get("summary"), f"{field}[{index}].summary", max_bytes=512)
+        result.append({"id": check_id, "status": status, "summary": summary})
+    return result
+
+
+def _parse_checks(values: list[str]) -> list[dict[str, str]]:
+    checks: list[dict[str, str]] = []
+    for value in values:
+        try:
+            item = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise StateCtlError(f"invalid --check-json: {exc}") from exc
+        checks.append(item)
+    return _check_list(checks)
 
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
@@ -715,6 +748,10 @@ def _task_ledger_path(state_path: Path) -> Path:
     return state_path.parent / "tasks.json"
 
 
+def _context_map_path(state_path: Path) -> Path:
+    return state_path.parent / "context-map.json"
+
+
 def _normalize_task(raw: Any, index: int) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise StateCtlError(f"tasks[{index}] must be an object")
@@ -728,11 +765,30 @@ def _normalize_task(raw: Any, index: int) -> dict[str, Any]:
     )
     if not done_when:
         raise StateCtlError(f"tasks[{index}].done_when must not be empty")
+    kind = raw.get("kind", "implementation")
+    if kind not in TASK_KINDS:
+        raise StateCtlError(f"tasks[{index}].kind is invalid")
+    affected_areas = _string_list(raw.get("affected_areas", []), f"tasks[{index}].affected_areas", max_items=8, item_bytes=128)
+    cohesion_key = _safe_id(
+        raw.get("cohesion_key") or (affected_areas[0] if affected_areas else task_id),
+        f"tasks[{index}].cohesion_key",
+    )
+    requires_bridge = raw.get("requires_bridge", False)
+    if not isinstance(requires_bridge, bool):
+        raise StateCtlError(f"tasks[{index}].requires_bridge must be boolean")
     return {
         "id": task_id,
         "title": title,
         "status": "pending",
         "done_when": done_when,
+        "kind": kind,
+        "cohesion_key": cohesion_key,
+        "affected_areas": affected_areas,
+        "reads": _string_list(raw.get("reads", []), f"tasks[{index}].reads", max_items=16, item_bytes=256),
+        "writes": _string_list(raw.get("writes", []), f"tasks[{index}].writes", max_items=16, item_bytes=256),
+        "contracts": _string_list(raw.get("contracts", []), f"tasks[{index}].contracts", max_items=8, item_bytes=512),
+        "regression_checks": _string_list(raw.get("regression_checks", []), f"tasks[{index}].regression_checks", max_items=8, item_bytes=128),
+        "requires_bridge": requires_bridge,
     }
 
 
@@ -748,7 +804,11 @@ def _validate_task_ledger(ledger: dict[str, Any]) -> list[dict[str, Any]]:
     for index, task in enumerate(tasks):
         if not isinstance(task, dict):
             raise StateCtlError(f"tasks[{index}] must be an object")
-        allowed = {"id", "title", "status", "done_when", "evidence", "summary"}
+        allowed = {
+            "id", "title", "status", "done_when", "kind", "cohesion_key",
+            "affected_areas", "reads", "writes", "contracts", "regression_checks",
+            "requires_bridge", "evidence", "checks", "summary",
+        }
         if set(task) - allowed:
             raise StateCtlError(f"tasks[{index}] has unsupported fields")
         task_id = _safe_id(task.get("id"), f"tasks[{index}].id")
@@ -766,10 +826,25 @@ def _validate_task_ledger(ledger: dict[str, Any]) -> list[dict[str, Any]]:
             raise StateCtlError(f"tasks[{index}].done_when must not be empty")
         if task.get("status") not in TASK_STATUSES:
             raise StateCtlError(f"tasks[{index}].status is invalid")
+        if task.get("kind") not in TASK_KINDS:
+            raise StateCtlError(f"tasks[{index}].kind is invalid")
+        _safe_id(task.get("cohesion_key"), f"tasks[{index}].cohesion_key")
+        _string_list(task.get("affected_areas"), f"tasks[{index}].affected_areas", max_items=8, item_bytes=128)
+        _string_list(task.get("reads"), f"tasks[{index}].reads", max_items=16, item_bytes=256)
+        _string_list(task.get("writes"), f"tasks[{index}].writes", max_items=16, item_bytes=256)
+        _string_list(task.get("contracts"), f"tasks[{index}].contracts", max_items=8, item_bytes=512)
+        regression_checks = _string_list(task.get("regression_checks"), f"tasks[{index}].regression_checks", max_items=8, item_bytes=128)
+        if not isinstance(task.get("requires_bridge"), bool):
+            raise StateCtlError(f"tasks[{index}].requires_bridge must be boolean")
         if task.get("status") == "complete":
             evidence = _evidence_list(task.get("evidence"), f"tasks[{index}].evidence")
-            if not evidence:
+            checks = _check_list(task.get("checks", []), f"tasks[{index}].checks")
+            if not evidence and not checks:
                 raise StateCtlError(f"tasks[{index}] complete without evidence")
+            passed = {check["id"] for check in checks if check["status"] == "passed"}
+            missing = [check_id for check_id in regression_checks if check_id not in passed]
+            if missing:
+                raise StateCtlError(f"tasks[{index}] missing passed checks: {', '.join(missing)}")
             _require_text(task.get("summary"), f"tasks[{index}].summary", max_bytes=1024)
     if len(_json_bytes(ledger)) > MAX_TASK_LEDGER_BYTES:
         raise StateCtlError(f"task ledger exceeds {MAX_TASK_LEDGER_BYTES} bytes")
@@ -817,6 +892,7 @@ def _validate_state(
         "checkpoint",
         "last_result",
         "worker_lease",
+        "quality",
     }
     extra = sorted(set(state) - allowed)
     if extra:
@@ -887,7 +963,16 @@ def _validate_state(
             "status",
             "done_when",
             "evidence",
+            "checks",
             "artifacts",
+            "kind",
+            "cohesion_key",
+            "affected_areas",
+            "reads",
+            "writes",
+            "contracts",
+            "regression_checks",
+            "requires_bridge",
         }
         if set(active) != expected_active:
             raise StateCtlError("active_task fields are invalid")
@@ -902,7 +987,18 @@ def _validate_state(
             item_bytes=1024,
         )
         _evidence_list(active.get("evidence"), "active_task.evidence")
+        _check_list(active.get("checks"), "active_task.checks")
         _string_list(active.get("artifacts"), "active_task.artifacts", item_bytes=1024)
+        if active.get("kind") not in TASK_KINDS:
+            raise StateCtlError("active_task.kind is invalid")
+        _safe_id(active.get("cohesion_key"), "active_task.cohesion_key")
+        _string_list(active.get("affected_areas"), "active_task.affected_areas", max_items=8, item_bytes=128)
+        _string_list(active.get("reads"), "active_task.reads", max_items=16, item_bytes=256)
+        _string_list(active.get("writes"), "active_task.writes", max_items=16, item_bytes=256)
+        _string_list(active.get("contracts"), "active_task.contracts", max_items=8, item_bytes=512)
+        _string_list(active.get("regression_checks"), "active_task.regression_checks", max_items=8, item_bytes=128)
+        if not isinstance(active.get("requires_bridge"), bool):
+            raise StateCtlError("active_task.requires_bridge must be boolean")
     if state["status"] in {"in_progress", "blocked"} and active is None:
         raise StateCtlError(f"{state['status']} state requires an active task")
     if state["status"] == "complete" and active is not None:
@@ -921,6 +1017,10 @@ def _validate_state(
         if active_source is not None and (
             active_source["title"] != active["title"]
             or active_source["done_when"] != active["done_when"]
+            or any(active_source[field] != active[field] for field in (
+                "kind", "cohesion_key", "affected_areas", "reads", "writes",
+                "contracts", "regression_checks", "requires_bridge",
+            ))
         ):
             raise StateCtlError("active task definition drifted from standalone task ledger")
         unfinished = [task for task in source_tasks if task["status"] != "complete"]
@@ -976,12 +1076,37 @@ def _validate_state(
             "id",
             "summary",
             "evidence",
+            "checks",
         }:
             raise StateCtlError("last_result fields are invalid")
         _safe_id(last_result.get("id"), "last_result.id")
         _require_text(last_result.get("summary"), "last_result.summary", max_bytes=1024)
         if not _evidence_list(last_result.get("evidence"), "last_result.evidence"):
-            raise StateCtlError("last_result requires evidence")
+            if not _check_list(last_result.get("checks"), "last_result.checks"):
+                raise StateCtlError("last_result requires evidence or checks")
+        else:
+            _check_list(last_result.get("checks"), "last_result.checks")
+
+    quality = state.get("quality")
+    if not isinstance(quality, dict) or set(quality) != {
+        "invariants", "completed_chunks", "review_interval", "review_required",
+        "review_reasons", "last_review", "pending_bridge", "next_handoff",
+    }:
+        raise StateCtlError("quality fields are invalid")
+    _string_list(quality.get("invariants"), "quality.invariants", max_items=16, item_bytes=512)
+    completed_chunks = quality.get("completed_chunks")
+    if not isinstance(completed_chunks, int) or isinstance(completed_chunks, bool) or completed_chunks < 0:
+        raise StateCtlError("quality.completed_chunks must be a non-negative integer")
+    review_interval = quality.get("review_interval")
+    if not isinstance(review_interval, int) or isinstance(review_interval, bool) or review_interval < 2 or review_interval > 32:
+        raise StateCtlError("quality.review_interval must be between 2 and 32")
+    if not isinstance(quality.get("review_required"), bool) or not isinstance(quality.get("pending_bridge"), bool):
+        raise StateCtlError("quality review/bridge flags must be boolean")
+    _string_list(quality.get("review_reasons"), "quality.review_reasons", max_items=4, item_bytes=256)
+    if quality.get("last_review") is not None:
+        _require_text(quality.get("last_review"), "quality.last_review", max_bytes=1024)
+    if quality.get("next_handoff") not in {"continue", "reset", "checkpoint"}:
+        raise StateCtlError("quality.next_handoff is invalid")
 
     worker_lease = state.get("worker_lease")
     if worker_lease is not None:
@@ -1056,7 +1181,16 @@ def _active_from_task(task: dict[str, Any], source_kind: str) -> dict[str, Any]:
         "status": "in_progress",
         "done_when": list(done_when),
         "evidence": [],
+        "checks": [],
         "artifacts": [],
+        "kind": task.get("kind", "implementation"),
+        "cohesion_key": task.get("cohesion_key", task["id"]),
+        "affected_areas": list(task.get("affected_areas", [])),
+        "reads": list(task.get("reads", [])),
+        "writes": list(task.get("writes", [])),
+        "contracts": list(task.get("contracts", [])),
+        "regression_checks": list(task.get("regression_checks", [])),
+        "requires_bridge": bool(task.get("requires_bridge", False)),
     }
 
 
@@ -1244,6 +1378,16 @@ def command_init(args: argparse.Namespace) -> dict[str, Any]:
             "reason": "initial task is ready for handoff" if active_task else "all tasks complete",
             "revision": 0,
         },
+        "quality": {
+            "invariants": constraints if args.invariant_from_constraints else args.invariant,
+            "completed_chunks": 0,
+            "review_interval": args.review_interval,
+            "review_required": False,
+            "review_reasons": [],
+            "last_review": None,
+            "pending_bridge": False,
+            "next_handoff": "continue",
+        },
         "worker_lease": None,
     }
     if ledger is not None:
@@ -1369,6 +1513,12 @@ def command_observe(args: argparse.Namespace) -> dict[str, Any]:
     if args.evidence:
         combined = state["active_task"]["evidence"] + args.evidence
         state["active_task"]["evidence"] = _evidence_list(combined)
+    if args.check_json:
+        incoming = _parse_checks(args.check_json)
+        existing = {check["id"]: check for check in state["active_task"]["checks"]}
+        for check in incoming:
+            existing[check["id"]] = check
+        state["active_task"]["checks"] = _check_list(list(existing.values()))
     if args.artifact:
         artifacts = _string_list(
             state["active_task"]["artifacts"] + args.artifact,
@@ -1446,8 +1596,23 @@ def command_complete(args: argparse.Namespace) -> dict[str, Any]:
         raise StateCtlError("complete requires an active task")
     summary = _require_text(args.summary, "summary", max_bytes=1024)
     evidence = _evidence_list(current["active_task"]["evidence"] + args.evidence)
-    if not evidence:
-        raise StateCtlError("completion requires verification evidence")
+    incoming_checks = _parse_checks(args.check_json)
+    merged_checks = {check["id"]: check for check in current["active_task"]["checks"]}
+    for check in incoming_checks:
+        merged_checks[check["id"]] = check
+    checks = _check_list(list(merged_checks.values()))
+    if not evidence and not checks:
+        raise StateCtlError("completion requires verification evidence or checks")
+    passed = {check["id"] for check in checks if check["status"] == "passed"}
+    missing = [
+        check_id for check_id in current["active_task"]["regression_checks"]
+        if check_id not in passed
+    ]
+    if missing:
+        raise StateCtlError(f"completion missing passed checks: {', '.join(missing)}")
+    failed = [check["id"] for check in checks if check["status"] == "failed"]
+    if failed:
+        raise StateCtlError(f"completion has failed checks: {', '.join(failed)}")
     state = copy.deepcopy(current)
     _release_worker_lease(state, args.run_id)
     task_id = state["active_task"]["id"]
@@ -1484,6 +1649,10 @@ def _complete_with_authority_locked(
 ) -> dict[str, Any]:
     summary = _require_text(args.summary, "summary", max_bytes=1024)
     evidence = _evidence_list(state["active_task"]["evidence"] + args.evidence)
+    merged_checks = {check["id"]: check for check in state["active_task"]["checks"]}
+    for check in _parse_checks(args.check_json):
+        merged_checks[check["id"]] = check
+    checks = _check_list(list(merged_checks.values()))
 
     first_path: Path
     first_payload: bytes
@@ -1496,6 +1665,7 @@ def _complete_with_authority_locked(
         task = matching[0]
         task["status"] = "complete"
         task["evidence"] = evidence
+        task["checks"] = checks
         task["summary"] = summary
         remaining = _next_pending(ledger["tasks"])
         if remaining is not None:
@@ -1517,7 +1687,13 @@ def _complete_with_authority_locked(
         first_path = tasks_path
         first_payload = new_text.encode("utf-8")
 
-    state["last_result"] = {"id": task_id, "summary": summary, "evidence": evidence}
+    completed_task = state["active_task"]
+    state["last_result"] = {
+        "id": task_id,
+        "summary": summary,
+        "evidence": evidence,
+        "checks": checks,
+    }
     state["active_task"] = None
     state["blocker"] = None
     state["observation"] = summary
@@ -1529,6 +1705,28 @@ def _complete_with_authority_locked(
         state["status"] = "in_progress"
         state["active_task"] = _active_from_task(remaining, source_kind)
         state["next_action"] = remaining["title"]
+    quality = state["quality"]
+    quality["completed_chunks"] += 1
+    reasons: list[str] = []
+    if remaining is not None and quality["completed_chunks"] % quality["review_interval"] == 0:
+        reasons.append(f"periodic review after {quality['completed_chunks']} chunks")
+    if completed_task["requires_bridge"] or len(completed_task["affected_areas"]) > 1:
+        quality["pending_bridge"] = True
+    if completed_task["kind"] == "integration":
+        quality["pending_bridge"] = False
+    if quality["pending_bridge"] and remaining is not None and remaining.get("kind", "implementation") != "integration":
+        reasons.append("cross-area change requires an integration chunk")
+    quality["review_required"] = bool(reasons)
+    quality["review_reasons"] = reasons
+    next_cohesion = remaining.get("cohesion_key", remaining["id"]) if remaining else None
+    if reasons or quality["pending_bridge"]:
+        quality["next_handoff"] = "checkpoint"
+    elif next_cohesion == completed_task["cohesion_key"]:
+        quality["next_handoff"] = "continue"
+    elif any(state["execution"]["capabilities"].get(name) for name in ("fresh_context", "in_place_compaction")):
+        quality["next_handoff"] = "reset"
+    else:
+        quality["next_handoff"] = "checkpoint"
     _advance(state, checkpoint_ready=True, reason=f"task {task_id} verified")
     _validate_state(
         state,
@@ -1552,6 +1750,8 @@ def _complete_with_authority_locked(
         "revision": state["revision"],
         "all_complete": state["status"] == "complete",
         "checkpoint_ready": True,
+        "next_handoff": state["quality"]["next_handoff"],
+        "review_required": state["quality"]["review_required"],
     }
 
 
@@ -1615,6 +1815,118 @@ def command_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def command_architecture_review(args: argparse.Namespace) -> dict[str, Any]:
+    root, path, current = _load_state(args)
+    _expect_revision(current, args.expected_revision)
+    if current.get("worker_lease") is not None:
+        raise StateCtlError("cannot review architecture while a worker lease is active")
+    summary = _require_text(args.summary, "summary", max_bytes=1024)
+    evidence = _require_text(args.evidence, "evidence", max_bytes=1024)
+    state = copy.deepcopy(current)
+    state["quality"]["review_required"] = False
+    state["quality"]["review_reasons"] = []
+    state["quality"]["last_review"] = f"{summary}; evidence: {evidence}"
+    if state["quality"]["pending_bridge"]:
+        state["quality"]["next_handoff"] = "checkpoint"
+    _advance(state, checkpoint_ready=True, reason="architecture review recorded")
+    _validate_state(state, path, root)
+    _atomic_write_json(path, state)
+    return {
+        "ok": True,
+        "command": "architecture-review",
+        "revision": state["revision"],
+        "pending_bridge": state["quality"]["pending_bridge"],
+    }
+
+
+def _validate_context_map(value: dict[str, Any], root: Path) -> list[dict[str, Any]]:
+    if set(value) != {"schema_version", "state_id", "revision", "entries"}:
+        raise StateCtlError("context map fields are invalid")
+    if value.get("schema_version") != CONTEXT_MAP_VERSION:
+        raise StateCtlError(f"context map schema_version must equal {CONTEXT_MAP_VERSION}")
+    _safe_id(value.get("state_id"), "context map state_id")
+    revision = value.get("revision")
+    if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
+        raise StateCtlError("context map revision is invalid")
+    entries = value.get("entries")
+    if not isinstance(entries, list) or len(entries) > 64:
+        raise StateCtlError("context map entries must contain at most 64 items")
+    seen: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict) or set(entry) != {"path", "purpose", "areas", "symbols", "updated_revision"}:
+            raise StateCtlError(f"context map entries[{index}] fields are invalid")
+        relative = _require_text(entry.get("path"), f"context map entries[{index}].path", max_bytes=256)
+        _inside(root / relative, root, "context map entry path")
+        if relative in seen:
+            raise StateCtlError(f"duplicate context map path: {relative}")
+        seen.add(relative)
+        _require_text(entry.get("purpose"), f"context map entries[{index}].purpose", max_bytes=512)
+        _string_list(entry.get("areas"), f"context map entries[{index}].areas", max_items=8, item_bytes=128)
+        _string_list(entry.get("symbols"), f"context map entries[{index}].symbols", max_items=12, item_bytes=128)
+        if not isinstance(entry.get("updated_revision"), int) or isinstance(entry["updated_revision"], bool) or entry["updated_revision"] < 0:
+            raise StateCtlError(f"context map entries[{index}].updated_revision is invalid")
+    if len(_json_bytes(value)) > MAX_TASK_LEDGER_BYTES:
+        raise StateCtlError(f"context map exceeds {MAX_TASK_LEDGER_BYTES} bytes")
+    return entries
+
+
+def command_context_map_update(args: argparse.Namespace) -> dict[str, Any]:
+    root, path, state = _load_state(args)
+    _expect_revision(state, args.expected_revision)
+    if state.get("worker_lease") is not None:
+        raise StateCtlError("cannot update context map while a worker lease is active")
+    try:
+        raw = json.loads(args.entry_json)
+    except json.JSONDecodeError as exc:
+        raise StateCtlError(f"invalid --entry-json: {exc}") from exc
+    if not isinstance(raw, dict) or set(raw) != {"path", "purpose", "areas", "symbols"}:
+        raise StateCtlError("context map entry fields must be path, purpose, areas, symbols")
+    relative = _require_text(raw.get("path"), "context map entry path", max_bytes=256)
+    candidate = _inside(root / relative, root, "context map entry path")
+    relative = candidate.relative_to(root).as_posix()
+    entry = {
+        "path": relative,
+        "purpose": _require_text(raw.get("purpose"), "context map entry purpose", max_bytes=512),
+        "areas": _string_list(raw.get("areas"), "context map entry areas", max_items=8, item_bytes=128),
+        "symbols": _string_list(raw.get("symbols"), "context map entry symbols", max_items=12, item_bytes=128),
+        "updated_revision": state["revision"],
+    }
+    map_path = _context_map_path(path)
+    if map_path.exists():
+        context_map = _read_json(map_path, "context map")
+        entries = _validate_context_map(context_map, root)
+        if context_map["state_id"] != state["id"]:
+            raise StateCtlError("context map belongs to another state")
+        next_entries = [existing for existing in entries if existing["path"] != relative]
+    else:
+        next_entries = []
+    next_entries.append(entry)
+    context_map = {
+        "schema_version": CONTEXT_MAP_VERSION,
+        "state_id": state["id"],
+        "revision": state["revision"],
+        "entries": sorted(next_entries, key=lambda item: item["path"]),
+    }
+    _validate_context_map(context_map, root)
+    _atomic_write_json(map_path, context_map)
+    return {"ok": True, "command": "context-map-update", "path": relative, "entries": len(next_entries)}
+
+
+def _relevant_context(state: dict[str, Any], state_path: Path, root: Path) -> list[dict[str, Any]]:
+    map_path = _context_map_path(state_path)
+    if not map_path.exists() or state["active_task"] is None:
+        return []
+    context_map = _read_json(map_path, "context map")
+    entries = _validate_context_map(context_map, root)
+    if context_map["state_id"] != state["id"]:
+        raise StateCtlError("context map belongs to another state")
+    active = state["active_task"]
+    paths = set(active["reads"] + active["writes"] + active["artifacts"])
+    areas = set(active["affected_areas"])
+    relevant = [entry for entry in entries if entry["path"] in paths or areas.intersection(entry["areas"])]
+    return relevant[:16]
+
+
 def _active_packet_task(
     state: dict[str, Any], state_path: Path, root: Path
 ) -> dict[str, Any] | None:
@@ -1627,6 +1939,13 @@ def _active_packet_task(
         "done_when": active["done_when"],
         "source_refs": [],
         "working_files": active["artifacts"],
+        "kind": active["kind"],
+        "cohesion_key": active["cohesion_key"],
+        "affected_areas": active["affected_areas"],
+        "reads": active["reads"],
+        "writes": active["writes"],
+        "contracts": active["contracts"],
+        "regression_checks": active["regression_checks"],
     }
     if state["source"]["kind"] == "openspec":
         packet_task["source_refs"] = [f"{state['source']['tasks_path']}#{active['id']}"]
@@ -1651,6 +1970,10 @@ def command_packet(args: argparse.Namespace) -> dict[str, Any]:
         raise StateCtlError("worker packet requires an active task")
     if current["active_task"]["status"] != "in_progress":
         raise StateCtlError("worker packet requires an in-progress task")
+    if current["quality"]["review_required"]:
+        raise StateCtlError("architecture review is required before the next worker packet")
+    if current["quality"]["pending_bridge"] and current["active_task"]["kind"] != "integration":
+        raise StateCtlError("an integration chunk is required before further implementation")
     if args.max_turns < 1:
         raise StateCtlError("max_turns must be positive")
     if args.max_result_bytes < 1024 or args.max_result_bytes > 64 * 1024:
@@ -1681,6 +2004,11 @@ def command_packet(args: argparse.Namespace) -> dict[str, Any]:
         "task": _active_packet_task(state, path, root),
         "next_action": state["next_action"],
         "last_observation": state["observation"],
+        "quality": {
+            "invariants": state["quality"]["invariants"],
+            "next_handoff": state["quality"]["next_handoff"],
+        },
+        "context": _relevant_context(state, path, root),
         "limits": {
             "max_turns": args.max_turns,
             "max_result_bytes": args.max_result_bytes,
@@ -1704,6 +2032,7 @@ def command_packet(args: argparse.Namespace) -> dict[str, Any]:
         )
         protected.add(authority_path)
         protected.add(_authority_lock_path(authority_path))
+    protected.add(_context_map_path(path).resolve())
     if output in protected:
         raise StateCtlError("packet output must not overwrite state or an authority file")
     lock_path = path.parent / ".statectl.lock"
@@ -1739,6 +2068,93 @@ def command_validate(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def command_migrate(args: argparse.Namespace) -> dict[str, Any]:
+    root, path = _state_path(args)
+    raw = _read_json(path, "state")
+    revision = raw.get("revision")
+    if revision != args.expected_revision:
+        raise StateCtlError(
+            f"revision conflict: expected {args.expected_revision}, current {revision}",
+            kind="revision_conflict",
+            code=ERROR_CONFLICT,
+        )
+    if raw.get("schema_version") == SCHEMA_VERSION:
+        _validate_state(raw, path, root)
+        return {"ok": True, "command": "migrate", "migrated": False, "revision": revision}
+    if raw.get("schema_version") != 3:
+        raise StateCtlError("only execution-state schema v3 can be migrated")
+    if raw.get("worker_lease") is not None:
+        raise StateCtlError("release or block the active worker lease before migration")
+
+    state = copy.deepcopy(raw)
+    active_old = state.get("active_task")
+    source = state.get("source", {})
+    source_kind = source.get("kind")
+    ledger: dict[str, Any] | None = None
+    ledger_path: Path | None = None
+    completed_chunks = 0
+    if source_kind == "standalone":
+        ledger_path = _task_ledger_path(path)
+        old_ledger = _read_json(ledger_path, "standalone task ledger")
+        if old_ledger.get("schema_version") != 1 or not isinstance(old_ledger.get("tasks"), list):
+            raise StateCtlError("schema v3 migration requires task ledger v1")
+        migrated_tasks = []
+        for index, old_task in enumerate(old_ledger["tasks"]):
+            task = _normalize_task(old_task, index)
+            task["status"] = old_task.get("status")
+            if task["status"] == "complete":
+                task["evidence"] = old_task.get("evidence", [])
+                task["checks"] = []
+                task["summary"] = old_task.get("summary")
+                completed_chunks += 1
+            migrated_tasks.append(task)
+        ledger = {"schema_version": TASK_LEDGER_VERSION, "tasks": migrated_tasks}
+        matching = next(
+            (task for task in migrated_tasks if active_old and task["id"] == active_old.get("id")),
+            None,
+        )
+    elif source_kind == "openspec":
+        tasks_path = _inside(root / source["tasks_path"], root, "OpenSpec tasks path")
+        _, tasks = _parse_openspec_tasks(tasks_path)
+        completed_chunks = sum(1 for task in tasks if task["complete"])
+        matching = next(
+            (task for task in tasks if active_old and task["id"] == active_old.get("id")),
+            None,
+        )
+    else:
+        raise StateCtlError("schema v3 state has an invalid source")
+
+    if active_old is not None:
+        if matching is None:
+            raise StateCtlError("active task cannot be mapped during migration")
+        active = _active_from_task(matching, source_kind)
+        active["status"] = active_old.get("status")
+        active["evidence"] = active_old.get("evidence", [])
+        active["artifacts"] = active_old.get("artifacts", [])
+        state["active_task"] = active
+    if isinstance(state.get("last_result"), dict):
+        state["last_result"]["checks"] = []
+    state["schema_version"] = SCHEMA_VERSION
+    state["quality"] = {
+        "invariants": [],
+        "completed_chunks": completed_chunks,
+        "review_interval": 8,
+        "review_required": False,
+        "review_reasons": [],
+        "last_review": None,
+        "pending_bridge": False,
+        "next_handoff": "checkpoint",
+    }
+    _advance(state, checkpoint_ready=bool(state.get("checkpoint", {}).get("ready")), reason="migrated from schema v3")
+    _validate_state(state, path, root, ledger_override=ledger)
+    if ledger is not None and ledger_path is not None:
+        _validate_task_ledger(ledger)
+        _write_pair_with_rollback(root, ledger_path, _json_bytes(ledger), path, _json_bytes(state))
+    else:
+        _atomic_write_json(path, state)
+    return {"ok": True, "command": "migrate", "migrated": True, "revision": state["revision"]}
+
+
 def command_runtime_probe(args: argparse.Namespace) -> dict[str, Any]:
     probe = probe_runtime(
         args.adapter,
@@ -1762,6 +2178,8 @@ def _validate_worker_packet(packet: dict[str, Any]) -> None:
         "next_action",
         "last_observation",
         "limits",
+        "quality",
+        "context",
     }
     missing = sorted(required - set(packet))
     if missing:
@@ -1811,6 +2229,13 @@ def _validate_worker_packet(packet: dict[str, Any]) -> None:
         "done_when",
         "source_refs",
         "working_files",
+        "kind",
+        "cohesion_key",
+        "affected_areas",
+        "reads",
+        "writes",
+        "contracts",
+        "regression_checks",
     }:
         raise StateCtlError("worker packet task fields are invalid")
     _safe_id(task.get("id"), "worker packet task.id")
@@ -1835,10 +2260,37 @@ def _validate_worker_packet(packet: dict[str, Any]) -> None:
         max_items=32,
         item_bytes=1024,
     )
+    if task.get("kind") not in TASK_KINDS:
+        raise StateCtlError("worker packet task.kind is invalid")
+    _safe_id(task.get("cohesion_key"), "worker packet task.cohesion_key")
+    _string_list(task.get("affected_areas"), "worker packet task.affected_areas", max_items=8, item_bytes=128)
+    _string_list(task.get("reads"), "worker packet task.reads", max_items=16, item_bytes=256)
+    _string_list(task.get("writes"), "worker packet task.writes", max_items=16, item_bytes=256)
+    _string_list(task.get("contracts"), "worker packet task.contracts", max_items=8, item_bytes=512)
+    _string_list(task.get("regression_checks"), "worker packet task.regression_checks", max_items=8, item_bytes=128)
     _require_text(packet.get("next_action"), "worker packet next_action", max_bytes=1024)
     observation = packet.get("last_observation")
     if not isinstance(observation, str) or _byte_len(observation) > MAX_OBSERVATION_BYTES:
         raise StateCtlError("worker packet last_observation is invalid")
+    quality = packet.get("quality")
+    if not isinstance(quality, dict) or set(quality) != {"invariants", "next_handoff"}:
+        raise StateCtlError("worker packet quality fields are invalid")
+    _string_list(quality.get("invariants"), "worker packet quality.invariants", max_items=16, item_bytes=512)
+    if quality.get("next_handoff") not in {"continue", "reset", "checkpoint"}:
+        raise StateCtlError("worker packet quality.next_handoff is invalid")
+    context = packet.get("context")
+    if not isinstance(context, list) or len(context) > 16:
+        raise StateCtlError("worker packet context is invalid")
+    for index, entry in enumerate(context):
+        if not isinstance(entry, dict) or set(entry) != {"path", "purpose", "areas", "symbols", "updated_revision"}:
+            raise StateCtlError(f"worker packet context[{index}] fields are invalid")
+        _require_text(entry.get("path"), f"worker packet context[{index}].path", max_bytes=256)
+        _require_text(entry.get("purpose"), f"worker packet context[{index}].purpose", max_bytes=512)
+        _string_list(entry.get("areas"), f"worker packet context[{index}].areas", max_items=8, item_bytes=128)
+        _string_list(entry.get("symbols"), f"worker packet context[{index}].symbols", max_items=12, item_bytes=128)
+        updated_revision = entry.get("updated_revision")
+        if not isinstance(updated_revision, int) or isinstance(updated_revision, bool) or updated_revision < 0:
+            raise StateCtlError(f"worker packet context[{index}].updated_revision is invalid")
     limits = packet.get("limits")
     if not isinstance(limits, dict) or set(limits) != {"max_turns", "max_result_bytes"}:
         raise StateCtlError("worker packet limits fields are invalid")
@@ -1906,6 +2358,11 @@ def command_runtime_plan(args: argparse.Namespace) -> dict[str, Any]:
         "task": _active_packet_task(state, state_path, root),
         "next_action": state["next_action"],
         "last_observation": state["observation"],
+        "quality": {
+            "invariants": state["quality"]["invariants"],
+            "next_handoff": state["quality"]["next_handoff"],
+        },
+        "context": _relevant_context(state, state_path, root),
     }
     for field, expected in expected_fields.items():
         if packet_data.get(field) != expected:
@@ -1957,6 +2414,9 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--implementation-ref", required=True)
     init.add_argument("--goal", required=True)
     init.add_argument("--constraint", action="append", default=[])
+    init.add_argument("--invariant", action="append", default=[])
+    init.add_argument("--invariant-from-constraints", action="store_true")
+    init.add_argument("--review-interval", type=int, default=8)
     init.add_argument("--task-id")
     init.add_argument("--task-title")
     init.add_argument("--done-when", action="append", default=[])
@@ -1986,11 +2446,13 @@ def build_parser() -> argparse.ArgumentParser:
             command.add_argument("--observation", required=True)
             command.add_argument("--next-action")
             command.add_argument("--evidence", action="append", default=[])
+            command.add_argument("--check-json", action="append", default=[])
             command.add_argument("--artifact", action="append", default=[])
         elif name == "complete":
             command.add_argument("--run-id")
             command.add_argument("--summary", required=True)
             command.add_argument("--evidence", action="append", default=[])
+            command.add_argument("--check-json", action="append", default=[])
         elif name == "block":
             command.add_argument("--run-id")
             command.add_argument("--reason", required=True)
@@ -2007,9 +2469,27 @@ def build_parser() -> argparse.ArgumentParser:
     packet.add_argument("--max-result-bytes", type=int, default=8192)
     packet.set_defaults(handler=_locked_state_command(command_packet))
 
+    architecture_review = subparsers.add_parser("architecture-review")
+    _add_state_location(architecture_review)
+    architecture_review.add_argument("--expected-revision", type=int, required=True)
+    architecture_review.add_argument("--summary", required=True)
+    architecture_review.add_argument("--evidence", required=True)
+    architecture_review.set_defaults(handler=_locked_state_command(command_architecture_review))
+
+    context_map = subparsers.add_parser("context-map-update")
+    _add_state_location(context_map)
+    context_map.add_argument("--expected-revision", type=int, required=True)
+    context_map.add_argument("--entry-json", required=True)
+    context_map.set_defaults(handler=_locked_state_command(command_context_map_update))
+
     validate = subparsers.add_parser("validate")
     _add_state_location(validate)
     validate.set_defaults(handler=_locked_state_command(command_validate))
+
+    migrate = subparsers.add_parser("migrate")
+    _add_state_location(migrate)
+    migrate.add_argument("--expected-revision", type=int, required=True)
+    migrate.set_defaults(handler=_locked_state_command(command_migrate))
 
     runtime_probe = subparsers.add_parser("runtime-probe")
     _add_runtime_options(runtime_probe)

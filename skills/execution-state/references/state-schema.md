@@ -1,4 +1,4 @@
-# Compact state schema v3
+# Compact state schema v4
 
 `statectl` — единственная публичная точка управления. Все команды печатают одну
 короткую JSON-строку; packet записывается только в файл.
@@ -8,7 +8,8 @@
 ```text
 .execution-state/<id>/
 ├── state.json
-└── tasks.json       # только standalone; не входит в worker packet
+├── tasks.json       # только standalone; не входит в worker packet
+└── context-map.json # опциональный компактный навигационный индекс
 ```
 
 В OpenSpec `tasks.json` отсутствует: task ledger уже находится в `tasks.md`.
@@ -18,7 +19,7 @@ Prompt templates и runtime adapter manifests не копируются в state
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "add-rate-limit",
   "revision": 4,
   "source": {
@@ -47,7 +48,16 @@ Prompt templates и runtime adapter manifests не копируются в state
     "status": "in_progress",
     "done_when": ["Реализовать middleware"],
     "evidence": [],
-    "artifacts": ["src/middleware/rate_limit.py"]
+    "checks": [],
+    "artifacts": ["src/middleware/rate_limit.py"],
+    "kind": "implementation",
+    "cohesion_key": "rate-limit",
+    "affected_areas": ["http", "security"],
+    "reads": ["src/http/router.py"],
+    "writes": ["src/middleware/rate_limit.py"],
+    "contracts": ["HTTP 429 сохраняет общий error envelope"],
+    "regression_checks": ["rate-limit-black-box", "error-envelope"],
+    "requires_bridge": true
   },
   "next_action": "Выполнить узкую проверку",
   "observation": "Код изменён, проверка ещё не выполнена",
@@ -57,6 +67,16 @@ Prompt templates и runtime adapter manifests не копируются в state
     "ready": false,
     "reason": "new observation",
     "revision": 4
+  },
+  "quality": {
+    "invariants": ["Публичный error envelope одинаков для всех handlers"],
+    "completed_chunks": 7,
+    "review_interval": 8,
+    "review_required": false,
+    "review_reasons": [],
+    "last_review": null,
+    "pending_bridge": false,
+    "next_handoff": "reset"
   },
   "worker_lease": null
 }
@@ -71,6 +91,11 @@ Prompt templates и runtime adapter manifests не копируются в state
 имеет статус `in_progress` или `blocked`. `begin`, `observe`, `complete`, `block`
 и `checkpoint` требуют `--expected-revision`; для безопасного handoff всегда
 передавай его и в `packet`. Конфликт не меняет файлы.
+
+`quality.invariants` действуют на все chunks. `review_interval` инициирует
+архитектурную проверку после N завершений. `pending_bridge` разрешает следующий
+packet только для задачи `kind=integration`. `next_handoff` — переносимая
+рекомендация `continue`, `reset` или `checkpoint`, а не vendor-команда.
 
 ## Worker lease и revision
 
@@ -98,13 +123,21 @@ revision.
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "tasks": [
     {
       "id": "auth-token",
       "title": "Реализовать token validation",
       "status": "pending",
-      "done_when": ["Целевая проверка проходит"]
+      "done_when": ["Целевая проверка проходит"],
+      "kind": "implementation",
+      "cohesion_key": "auth",
+      "affected_areas": ["auth"],
+      "reads": ["internal/auth/service.go"],
+      "writes": ["internal/auth/token.go"],
+      "contracts": ["expired token отклоняется"],
+      "regression_checks": ["token-black-box"],
+      "requires_bridge": false
     }
   ]
 }
@@ -137,10 +170,28 @@ revision.
 
 <STATECTL> complete --id auth --project-root . --expected-revision 1 \
   --run-id auth-worker-1 --summary "Chunk готов" \
-  --evidence "project check: pass"
+  --check-json '{"id":"token-black-box","status":"passed","summary":"pass"}'
+
+<STATECTL> context-map-update --id auth --project-root . \
+  --expected-revision 2 \
+  --entry-json '{"path":"internal/auth/token.go","purpose":"token lifecycle","areas":["auth"],"symbols":["Issuer","Validate"]}'
+
+<STATECTL> architecture-review --id auth --project-root . \
+  --expected-revision 2 --summary "Границы модулей сохранены" \
+  --evidence "dependency graph и wiring проверены"
 
 <STATECTL> validate --id auth --project-root .
 ```
+
+Незавершённый state schema v3 обновляется явно:
+
+```text
+<STATECTL> migrate --id auth --project-root . --expected-revision <CURRENT>
+```
+
+Миграция повышает revision, переводит standalone ledger v1 в v2 и добавляет
+безопасные defaults quality/task-contract полей. Активный worker lease нужно
+сначала принять либо заблокировать старой версией controller.
 
 `runtime-plan` всегда требует state binding: укажи `--id` вместе с
 `--project-root` либо `--state` вместе с соответствующим `--project-root`. Он
@@ -152,6 +203,15 @@ probe, а `runtime-plan` agent не запускает.
 Для нескольких standalone-задач передай `--tasks-file` с объектом
 `{"tasks":[...]}` или повторяй `--task-json`. Не печатай содержимое task index
 и packet в model context без необходимости.
+
+Structured check имеет поля `id`, `status: passed|failed`, `summary`. Если ID
+перечислен в `regression_checks`, `complete` требует именно passed check с этим
+ID. Любой переданный failed check блокирует завершение.
+
+`context-map.json` хранит до 64 записей `{path,purpose,areas,symbols,
+updated_revision}`. В packet попадают не более 16 записей, выбранных по
+`reads`, `writes`, artifacts и пересечению `affected_areas`. Файл не содержит
+исходный код, требования или историю.
 
 ## Лимиты и запрещённые данные
 

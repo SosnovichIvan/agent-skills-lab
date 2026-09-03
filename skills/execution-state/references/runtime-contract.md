@@ -8,8 +8,8 @@
 
 | Слой | Ответственность |
 | --- | --- |
-| Skill | Декомпозиция, границы semantic chunk, checkpoint policy |
-| `statectl` | State machine, revision/lease, OpenSpec overlay, packet и валидация |
+| Skill | Декомпозиция, contracts, границы chunk и checkpoint policy |
+| `statectl` | State machine, quality gates, context map, revision/lease и packet |
 | CLI-adapter | Только discovery, capabilities и безопасный launch plan |
 | Worker | Реализация одного chunk и структурированный результат |
 
@@ -44,8 +44,9 @@ Runtime сообщает только подтверждённые возмож�
 ## Lifecycle одного chunk
 
 ```text
-probe runtime → choose strategy → begin chunk → implement and verify
-→ update state once → checkpoint → packet/lease → bound runtime-plan
+probe runtime → choose strategy → begin chunk → implement and verify contracts
+→ update context map/state → architecture/bridge gate → checkpoint
+→ packet/lease → bound runtime-plan
 → compact/fresh/manual → accept result/release lease
 ```
 
@@ -55,14 +56,17 @@ agent turns. Закончи его раньше при блокере, запр�
 подсистемы или превышении установленного бюджета.
 
 Reset выгоден, когда ожидаемая повторная передача одноразовой истории больше
-cold start и rehydration packet. `statectl route` использует подтверждённые
-capabilities и оценку работы; порог затем калибруется benchmark-метриками.
+cold start и rehydration packet. Для соседних chunks с одним `cohesion_key`
+используй `continue`; при смене ключа — `reset`, если capability подтверждена;
+иначе `checkpoint`. Это решение хранится как vendor-neutral рекомендация, а
+конкретный adapter выбирает доступный механизм.
 
 ## Передача
 
 До смены контекста controller обязан:
 
-1. принять только проверяемые факты и evidence;
+1. принять только проверяемые факты и structured checks для всех объявленных
+   regression contracts;
 2. сохранить валидный checkpoint с одним `next_action`;
 3. записать worker packet через `statectl packet`, передав
    `--expected-revision`, `--run-id` и `--output`; операция повышает revision и
@@ -72,6 +76,11 @@ capabilities и оценку работы; порог затем калибру�
 5. передать adapter только путь проекта, prompt/packet и безопасные runtime
    параметры;
 6. не передавать предыдущие сообщения, рассуждения и полные логи.
+
+Перед packet controller запрещает пропуск обязательного architecture review и
+запрещает обычный implementation chunk, пока cross-area изменение ожидает
+`kind=integration`. Релевантные записи context map выбираются по areas и
+рабочим путям; весь индекс и содержимое файлов в packet не копируются.
 
 Worker возвращает result envelope с `run_id` и `based_on_revision`. Controller
 требует, чтобы они совпали с lease и post-packet revision, проверяет изменённые

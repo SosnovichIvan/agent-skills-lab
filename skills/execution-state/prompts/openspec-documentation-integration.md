@@ -33,6 +33,12 @@
 9. Custom manifest требует явного выбора и доверия; trust разрешает version
    probe executable, но не model run и не permission bypass.
 10. Archive и внешние действия требуют обычного отдельного разрешения.
+11. Design и specs задают global invariants и contracts. Перед Apply leaf-задача
+    получает affected areas, reads/writes, cohesion key и regression checks.
+12. Cross-area изменение требует следующей integration-задачи; периодический
+    architecture review нельзя заменять локальной компиляцией.
+13. Context map хранит только навигационные сведения и не становится вторым
+    источником требований рядом с OpenSpec.
 
 Добавь пользовательский шаблон:
 
@@ -53,8 +59,12 @@ Custom adapter manifest, если используется: <none|MANIFEST_PATH>
 Ограничения:
 <CONSTRAINTS>
 
+Глобальные инварианты из design/specs:
+<INVARIANTS>
+
 Работай только в рамках утверждённых OpenSpec-артефактов. Выбери профиль по
-правилам execution-state, выполняй semantic chunks и оставляй валидный
+правилам execution-state, обогащай активную leaf-задачу contracts и именованными
+regression checks, выполняй semantic/integration chunks и оставляй валидный
 checkpoint перед reset/handoff. После packet сохрани выданные run_id и revision,
 свяжи runtime-plan с тем же state и используй их при приёмке worker result. Не
 Archive без отдельного разрешения.

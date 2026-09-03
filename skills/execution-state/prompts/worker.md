@@ -13,15 +13,24 @@ worker packet.
 <PACKET_PATH>
 
 Прочитай packet, проверь protocol, state_id, run_id и based_on_revision, затем
-открой только указанные source_refs и working_files. Не запрашивай и не
+открой указанные source_refs, task.reads/task.writes и релевантные записи
+context map. Context map — навигация, а не источник требований. Не запрашивай и не
 восстанавливай предыдущий transcript. Не изменяй execution state, task ledger
 или OpenSpec checkbox: это делает coordinator после приёмки результата.
 
-Работай в пределах goal, constraints и task.done_when. Выполни узкую проверку.
-Верни только result envelope execution-state.result/v1 по worker protocol.
+Работай в пределах goal, constraints, quality.invariants, task.done_when и
+task.contracts. Выполни каждый task.regression_checks и верни отдельный
+structured check с тем же ID; один общий текст «тесты прошли» недостаточен.
+Если kind=integration, проверь wiring и сквозное поведение между areas, а не
+добавляй новую локальную функцию.
+
+Верни только result envelope execution-state.result/v2 по worker protocol.
 Не включай chain-of-thought, полные логи, секреты и лишнее описание.
 Скопируй `run_id`, `based_on_revision` и `task.id` из packet без изменений: по
 ним coordinator проверяет активный lease и принимает результат.
+
+Добавь компактные context_updates для созданных или существенно изменённых
+файлов: path, purpose, areas и ключевые symbols, без кода и логов.
 
 Если задача заблокирована, верни проверенные факты, точный blocker и одно
 предлагаемое next_action. Не помечай результат complete без evidence.

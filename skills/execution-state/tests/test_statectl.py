@@ -131,7 +131,7 @@ class StateCtlTests(unittest.TestCase):
     def test_opaque_implementation_ref_and_compact_state(self) -> None:
         path = self.init_standalone()
         state = self.load_state(path)
-        self.assertEqual(3, state["schema_version"])
+        self.assertEqual(4, state["schema_version"])
         self.assertEqual("/backend-implementation", state["implementation_ref"])
         self.assertLessEqual(path.stat().st_size, statectl.MAX_STATE_BYTES)
         self.assertEqual(1, len(path.read_text(encoding="utf-8").splitlines()))
@@ -213,7 +213,7 @@ class StateCtlTests(unittest.TestCase):
         self.assertNotIn("last_result", packet)
         self.assertNotIn("history", packet)
         self.assertNotIn("active_task", packet)
-        self.assertEqual("execution-state.worker/v1", packet["protocol"])
+        self.assertEqual("execution-state.worker/v2", packet["protocol"])
         self.assertEqual(2, packet["based_on_revision"])
         self.assertEqual("two", packet["task"]["id"])
         self.assertEqual("first complete", packet["last_observation"])
@@ -258,7 +258,7 @@ class StateCtlTests(unittest.TestCase):
         )
         self.assertEqual(0, code, result)
         packet = json.loads(packet_path.read_text(encoding="utf-8"))
-        self.assertEqual("execution-state.worker/v1", packet["protocol"])
+        self.assertEqual("execution-state.worker/v2", packet["protocol"])
         self.assertTrue(packet["run_id"])
         self.assertEqual(3, packet["based_on_revision"])
         self.assertEqual("задача-1", packet["task"]["id"])
@@ -712,6 +712,181 @@ class StateCtlTests(unittest.TestCase):
         state = self.load_state(path)
         self.assertEqual("blocked", state["status"])
         self.assertTrue(state["checkpoint"]["ready"])
+
+    def test_declared_regression_checks_are_a_completion_gate(self) -> None:
+        path = self.init_standalone(task_json=[{
+            "id": "contract",
+            "title": "Implement contract",
+            "done_when": ["behavior works"],
+            "contracts": ["same key and body replays"],
+            "regression_checks": ["idempotency-replay"],
+        }])
+        code, result = self.run_cli(
+            "complete",
+            *self.state_arguments(),
+            "--expected-revision", "0",
+            "--summary", "implemented",
+            "--evidence", "manual inspection",
+        )
+        self.assertEqual(statectl.ERROR_INVALID, code)
+        self.assertIn("idempotency-replay", result["message"])
+        self.assertEqual(0, self.load_state(path)["revision"])
+        check = json.dumps({
+            "id": "idempotency-replay",
+            "status": "passed",
+            "summary": "black-box replay check passed",
+        })
+        code, result = self.run_cli(
+            "complete",
+            *self.state_arguments(),
+            "--expected-revision", "0",
+            "--summary", "implemented",
+            "--check-json", check,
+        )
+        self.assertEqual(0, code, result)
+
+    def test_context_map_sends_only_relevant_entries(self) -> None:
+        self.init_standalone(task_json=[{
+            "id": "auth",
+            "title": "Implement auth",
+            "done_when": ["auth works"],
+            "affected_areas": ["auth"],
+            "reads": ["internal/auth/service.go"],
+        }])
+        for entry in (
+            {"path": "internal/auth/service.go", "purpose": "auth orchestration", "areas": ["auth"], "symbols": ["Service"]},
+            {"path": "internal/billing/store.go", "purpose": "billing store", "areas": ["billing"], "symbols": ["Store"]},
+        ):
+            code, result = self.run_cli(
+                "context-map-update",
+                *self.state_arguments(),
+                "--expected-revision", "0",
+                "--entry-json", json.dumps(entry),
+            )
+            self.assertEqual(0, code, result)
+        packet_path = self.root / "context-packet.json"
+        code, result = self.run_cli(
+            "packet", *self.state_arguments(), "--output", str(packet_path)
+        )
+        self.assertEqual(0, code, result)
+        packet = json.loads(packet_path.read_text(encoding="utf-8"))
+        self.assertEqual(["internal/auth/service.go"], [item["path"] for item in packet["context"]])
+
+    def test_periodic_architecture_review_blocks_next_packet(self) -> None:
+        tasks = [
+            {"id": str(index), "title": f"Task {index}", "done_when": ["done"]}
+            for index in range(1, 4)
+        ]
+        arguments = [
+            "init", *self.state_arguments(), "--source", "standalone",
+            "--profile", "lite", "--adapter", "manual",
+            "--implementation-ref", "implementation", "--goal", "goal",
+            "--review-interval", "2",
+        ]
+        for task in tasks:
+            arguments.extend(["--task-json", json.dumps(task)])
+        code, result = self.run_cli(*arguments)
+        self.assertEqual(0, code, result)
+        for revision in (0, 1):
+            code, result = self.run_cli(
+                "complete", *self.state_arguments(),
+                "--expected-revision", str(revision),
+                "--summary", "done", "--evidence", "check passed",
+            )
+            self.assertEqual(0, code, result)
+        packet_path = self.root / "blocked-packet.json"
+        code, result = self.run_cli(
+            "packet", *self.state_arguments(), "--output", str(packet_path)
+        )
+        self.assertEqual(statectl.ERROR_INVALID, code)
+        self.assertIn("architecture review", result["message"])
+        code, result = self.run_cli(
+            "architecture-review", *self.state_arguments(),
+            "--expected-revision", "2", "--summary", "boundaries remain valid",
+            "--evidence", "dependency graph inspected",
+        )
+        self.assertEqual(0, code, result)
+        code, result = self.run_cli(
+            "packet", *self.state_arguments(), "--output", str(packet_path)
+        )
+        self.assertEqual(0, code, result)
+
+    def test_cross_area_change_requires_integration_chunk(self) -> None:
+        path = self.init_standalone(task_json=[
+            {
+                "id": "cross", "title": "Change auth and audit", "done_when": ["done"],
+                "affected_areas": ["auth", "audit"], "requires_bridge": True,
+            },
+            {"id": "plain", "title": "Continue implementation", "done_when": ["done"]},
+        ])
+        code, result = self.run_cli(
+            "complete", *self.state_arguments(), "--expected-revision", "0",
+            "--summary", "done", "--evidence", "checks passed",
+        )
+        self.assertEqual(0, code, result)
+        self.assertTrue(result["review_required"])
+        code, result = self.run_cli(
+            "architecture-review", *self.state_arguments(), "--expected-revision", "1",
+            "--summary", "reviewed", "--evidence", "boundaries inspected",
+        )
+        self.assertEqual(0, code, result)
+        code, result = self.run_cli(
+            "packet", *self.state_arguments(), "--output", str(self.root / "bridge.json")
+        )
+        self.assertEqual(statectl.ERROR_INVALID, code)
+        self.assertIn("integration chunk", result["message"])
+        self.assertTrue(self.load_state(path)["quality"]["pending_bridge"])
+
+    def test_handoff_recommends_reset_when_cohesion_changes_and_runtime_supports_it(self) -> None:
+        path = self.init_standalone(task_json=[
+            {"id": "auth", "title": "Auth", "done_when": ["done"], "cohesion_key": "auth"},
+            {"id": "audit", "title": "Audit", "done_when": ["done"], "cohesion_key": "audit"},
+        ])
+        state = self.load_state(path)
+        state["execution"]["capabilities"]["fresh_context"] = True
+        path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+        code, result = self.run_cli(
+            "complete", *self.state_arguments(), "--expected-revision", "0",
+            "--summary", "done", "--evidence", "checks passed",
+        )
+        self.assertEqual(0, code, result)
+        self.assertEqual("reset", result["next_handoff"])
+
+    def test_migrate_v3_state_and_ledger_is_explicit_and_revision_bound(self) -> None:
+        path = self.init_standalone()
+        state = self.load_state(path)
+        state["schema_version"] = 3
+        state.pop("quality")
+        for field in (
+            "checks", "kind", "cohesion_key", "affected_areas", "reads",
+            "writes", "contracts", "regression_checks", "requires_bridge",
+        ):
+            state["active_task"].pop(field)
+        path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+        ledger_path = path.parent / "tasks.json"
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+        ledger["schema_version"] = 1
+        for task in ledger["tasks"]:
+            for field in (
+                "kind", "cohesion_key", "affected_areas", "reads", "writes",
+                "contracts", "regression_checks", "requires_bridge",
+            ):
+                task.pop(field)
+        ledger_path.write_text(json.dumps(ledger, ensure_ascii=False), encoding="utf-8")
+        code, result = self.run_cli(
+            "migrate", *self.state_arguments(), "--expected-revision", "7"
+        )
+        self.assertEqual(statectl.ERROR_CONFLICT, code)
+        code, result = self.run_cli(
+            "migrate", *self.state_arguments(), "--expected-revision", "0"
+        )
+        self.assertEqual(0, code, result)
+        self.assertTrue(result["migrated"])
+        migrated = self.load_state(path)
+        self.assertEqual(4, migrated["schema_version"])
+        self.assertEqual(1, migrated["revision"])
+        self.assertIn("quality", migrated)
+        self.assertEqual(2, json.loads(ledger_path.read_text(encoding="utf-8"))["schema_version"])
 
 
 if __name__ == "__main__":
