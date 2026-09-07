@@ -207,7 +207,11 @@ long-session артефактах он ожидаемо выявляет ран�
 старый `Final gate: Да` следует читать только как compile/static gate, а не как
 доказательство функциональной корректности.
 
-Актуальная prerelease-версия пока не имеет валидного сравнительного результата:
-предыдущие quality-запуски диагностические и исключены из выводов до прохождения
-validation gates. Исторические измерения сохранены в
+Первое валидное сокращённое сравнение на 16 задачах показало для candidate
+снижение total tokens на 73.88%, output tokens на 59.60% и uncached input на
+15.82% относительно AI-only. При этом model wall time вырос на 76.14% из-за
+bootstrap, architecture reviews и recovery. Это один промежуточный прогон, а
+не итоговая статистика релиза; подробности, ограничения и checksums приведены в
+[отчёте GATE-4](../../benchmarks/go-auth-service/reports/gate4-short-gpt-5.6-luna-20260907.md).
+Исторические измерения сохранены в
 [отдельном отчёте](../../benchmarks/go-auth-service/reports/legacy-benchmarks.md).

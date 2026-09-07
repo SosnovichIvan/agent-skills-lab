@@ -9,7 +9,7 @@
 используется для сравнительной статистики.
 
 Последний принятый промежуточный результат:
-[GATE-3 model canary](../reports/gate3-canary-gpt-5.6-luna-20260907.md).
+[GATE-4 shortened comparison](../reports/gate4-short-gpt-5.6-luna-20260907.md).
 
 ## Зафиксированное решение
 

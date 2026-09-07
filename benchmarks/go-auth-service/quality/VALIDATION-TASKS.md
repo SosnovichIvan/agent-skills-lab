@@ -264,9 +264,13 @@
   успешно возобновляется без model usage.
 - [x] **GATE-3 — Model canary.** Один candidate, 8 задач,
   `review_interval=4`: два review, один принудительный recovery и один reset.
-- [ ] **GATE-4 — Сокращённое сравнение.** Control, candidate и baseline по
+- [x] **GATE-4 — Сокращённое сравнение.** Control, candidate и baseline по
   одному разу на первых 16 задачах; все execution runs должны завершиться,
-  независимо от quality outcome.
+  независимо от quality outcome. Проверено запуском
+  `gate4-short-rerun-gpt-5.6-luna-20260907`; все три execution status равны
+  `complete`. Control получил продуктовый fail на задаче `3.3`, candidate и
+  baseline завершили 16/16. Результаты и ограничения сравнения зафиксированы в
+  `../reports/gate4-short-gpt-5.6-luna-20260907.md`.
 - [ ] **GATE-5 — Полный эксперимент.** Только после GATE-0—GATE-4 запустить три
   повтора всех трёх вариантов на 32 задачах. Стабильный release tag из VAL-037
   создаётся только после валидного полного результата.
