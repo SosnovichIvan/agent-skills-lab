@@ -48,7 +48,7 @@ worker prompt. Resume/fork старой сессии строгим reset не �
 
 | Компонент | Когда нужен | Для чего |
 | --- | --- | --- |
-| Полная папка `execution-state/` | Всегда | `SKILL.md` использует относительные `scripts/`, `references/` и `prompts/` |
+| Полная папка `execution-state/` | Всегда | `SKILL.md` использует относительные `scripts/` и `references/` |
 | Python 3.9+ | Профили `lite` и `reset` | Запуск `scripts/statectl.py`; используются только модули стандартной библиотеки |
 | Права чтения и записи в проекте | Профили `lite` и `reset` | Создание `.execution-state/`, checkpoint и worker packet |
 | Один agent CLI или совместимый custom adapter | Автоматический `reset` | Создание нового model context |
@@ -115,15 +115,16 @@ reset дополнительно проверь `<cli> --help` и сформир
 
 ## Использование
 
-- [Универсальный пользовательский prompt](prompts/use-execution-state.md)
-- [Интеграция в документацию OpenSpec](prompts/openspec-documentation-integration.md)
-- [Worker prompt новой сессии](prompts/worker.md)
-- [Architecture/integration review prompt](prompts/review-quality.md)
 - [Инструкции skill](SKILL.md)
 
 Единственный публичный helper — `scripts/statectl.py`. Он выбирает route,
 обслуживает schema/revision, создаёт packet и строит launch plan. Он не запускает
 платный agent CLI самостоятельно.
+
+Отдельные prompt templates временно не поставляются. Вызови skill нативным
+синтаксисом агента и опиши задачу обычным сообщением. Текущая директория,
+`base-agent`, auto adapter, проверяемый результат и минимальные критерии
+coordinator определяет самостоятельно.
 
 `packet` — изменяющая операция: она повышает revision, создаёт единственный
 активный `worker_lease` и возвращает `run_id`. `runtime-plan` принимает packet

@@ -13,8 +13,8 @@ from typing import Any
 
 
 VARIANT_CONFIG = {
-    "control-skill-v3": ("01-skill-standalone", "control", "v1"),
-    "candidate-skill-v4": ("01-skill-standalone", "candidate", "v2"),
+    "control-skill-previous": ("01-skill-standalone", "control", "v2"),
+    "candidate-skill-current": ("01-skill-standalone", "candidate", "v2"),
     "ai-only": ("02-ai-only", "none", "v2"),
 }
 
@@ -34,13 +34,11 @@ def run_status(metrics_path: Path, runner_variant: str) -> str | None:
     return run.get("status") if isinstance(run, dict) else None
 
 
-def wait_existing(metrics_path: Path, runner_variant: str) -> None:
+def wait_existing(metrics_path: Path, runner_variant: str) -> str:
     while True:
         status = run_status(metrics_path, runner_variant)
-        if status == "complete":
-            return
-        if status == "failed":
-            raise RuntimeError(f"existing run failed: {metrics_path.parent.name}")
+        if status in {"complete", "failed"}:
+            return status
         if status not in {"preparing", "running"}:
             raise RuntimeError(f"cannot resume existing run in status {status!r}")
         time.sleep(10)
@@ -67,15 +65,25 @@ def main() -> int:
         "v1": repo / "benchmarks" / "go-auth-service" / "long-session" / "worker-result.schema.json",
         "v2": repo / "benchmarks" / "go-auth-service" / "quality" / "worker-result.schema.json",
     }
-    skills = {
-        "control": experiment / "inputs" / "skills" / "execution-state",
-        "candidate": repo / "skills" / "execution-state",
-    }
+    if manifest.get("protocol_version", 1) >= 2:
+        skills = {
+            "control": experiment / "inputs" / "control" / "skills" / "execution-state",
+            "candidate": experiment / "inputs" / "candidate" / "skills" / "execution-state",
+        }
+    else:
+        skills = {
+            "control": experiment / "inputs" / "skills" / "execution-state",
+            "candidate": repo / "skills" / "execution-state",
+        }
+    for label, skill in skills.items():
+        if not (skill / "SKILL.md").is_file() or not (skill / "scripts" / "statectl.py").is_file():
+            raise RuntimeError(f"missing {label} skill snapshot: {skill}")
+    failed_runs: list[str] = []
 
     for repeat, order in enumerate(manifest["run_orders"], start=1):
         for variant_id in order:
             runner_variant, skill_kind, schema_kind = VARIANT_CONFIG[variant_id]
-            short = {"control-skill-v3": "control", "candidate-skill-v4": "candidate", "ai-only": "ai"}[variant_id]
+            short = {"control-skill-previous": "control", "candidate-skill-current": "candidate", "ai-only": "ai"}[variant_id]
             run_id = f"repeat-{repeat:02d}-{short}"
             metrics_path = output_root / run_id / "metrics.json"
             status = run_status(metrics_path, runner_variant)
@@ -84,10 +92,13 @@ def main() -> int:
                 continue
             if status in {"preparing", "running"}:
                 print(f"wait existing {run_id}", flush=True)
-                wait_existing(metrics_path, runner_variant)
+                if wait_existing(metrics_path, runner_variant) == "failed":
+                    failed_runs.append(run_id)
                 continue
             if status == "failed":
-                raise RuntimeError(f"run requires inspection before restart: {run_id}")
+                print(f"record failed {run_id}; continue experiment", flush=True)
+                failed_runs.append(run_id)
+                continue
             command = [
                 sys.executable, str(runner), "--variant", runner_variant,
                 "--tasks-file", str(tasks), "--output-root", str(output_root),
@@ -100,8 +111,12 @@ def main() -> int:
             print(f"start {run_id}: {variant_id}", flush=True)
             completed = subprocess.run(command, cwd=repo, check=False)
             if completed.returncode != 0:
-                raise RuntimeError(f"run failed: {run_id} (exit {completed.returncode})")
+                print(f"record failed {run_id} (exit {completed.returncode}); continue experiment", flush=True)
+                failed_runs.append(run_id)
     print(experiment, flush=True)
+    if failed_runs:
+        print(f"failed runs: {', '.join(failed_runs)}", flush=True)
+        return 1
     return 0
 
 

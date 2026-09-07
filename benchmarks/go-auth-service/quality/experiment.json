@@ -1,22 +1,22 @@
 {
-  "protocol_version": 1,
-  "name": "execution-state-v4-standalone-quality",
+  "protocol_version": 4,
+  "name": "execution-state-current-vs-previous-standalone-quality",
   "model": "gpt-5.6-luna",
   "reasoning_effort": "medium",
   "repeats": 3,
   "source": "standalone",
   "empty_project_per_variant": true,
   "fresh_initial_session": true,
-  "control_ref": "99c0ec4121ea97a2f9988d5e360e206d5d55b6bc",
+  "control_ref": "f80b4f8eba4c6641650b7d1a560d4b70a067a09d",
   "variants": [
     {
-      "id": "control-skill-v3",
+      "id": "control-skill-previous",
       "skill": true,
       "skill_ref": "control_ref",
       "context_mode": "fresh-worker-per-chunk"
     },
     {
-      "id": "candidate-skill-v4",
+      "id": "candidate-skill-current",
       "skill": true,
       "skill_ref": "candidate_ref",
       "context_mode": "adaptive-by-cohesion-key"
@@ -29,9 +29,9 @@
     }
   ],
   "run_orders": [
-    ["control-skill-v3", "candidate-skill-v4", "ai-only"],
-    ["candidate-skill-v4", "ai-only", "control-skill-v3"],
-    ["ai-only", "control-skill-v3", "candidate-skill-v4"]
+    ["control-skill-previous", "candidate-skill-current", "ai-only"],
+    ["candidate-skill-current", "ai-only", "control-skill-previous"],
+    ["ai-only", "control-skill-previous", "candidate-skill-current"]
   ],
   "final_verifier": "benchmarks/go-auth-service/quality/verify_behavior.py"
 }

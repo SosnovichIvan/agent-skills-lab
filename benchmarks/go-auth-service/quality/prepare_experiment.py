@@ -61,6 +61,42 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def snapshot_skill(repo_root: Path, ref: str, destination: Path, label: str) -> Path:
+    destination.mkdir(parents=True, exist_ok=True)
+    archive = destination / f"{label}.tar"
+    archived = subprocess.run(
+        [
+            "git",
+            "archive",
+            "--format=tar",
+            "--output",
+            str(archive),
+            ref,
+            "skills/execution-state",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if archived.returncode != 0:
+        raise ValueError(f"cannot archive {label} skill: {archived.stderr.strip()}")
+    extracted = destination / label
+    extracted.mkdir()
+    unpacked = subprocess.run(
+        ["tar", "-xf", str(archive), "-C", str(extracted)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if unpacked.returncode != 0:
+        raise ValueError(f"cannot extract {label} skill: {unpacked.stderr.strip()}")
+    skill = extracted / "skills" / "execution-state"
+    if not (skill / "SKILL.md").is_file() or not (skill / "scripts" / "statectl.py").is_file():
+        raise ValueError(f"invalid {label} skill snapshot")
+    return archive
+
+
 def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
     quality = Path(__file__).resolve().parent
     benchmark = quality.parent
@@ -94,6 +130,9 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
     if not isinstance(source_tasks, list) or len(source_tasks) != 32:
         raise ValueError("expected the fixed 32-task long-session catalog")
     destination.mkdir(parents=True)
+    inputs = destination / "inputs"
+    control_archive = snapshot_skill(repo_root, profile["control_ref"], inputs, "control")
+    candidate_archive = snapshot_skill(repo_root, candidate_ref, inputs, "candidate")
     catalog = enrich_tasks(source_tasks)
     catalog_path = destination / "tasks.json"
     catalog_path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -104,6 +143,8 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
         "prepared_at": datetime.now(timezone.utc).isoformat(),
         "profile_sha256": sha256(profile_path),
         "task_catalog_sha256": sha256(catalog_path),
+        "control_snapshot_sha256": sha256(control_archive),
+        "candidate_snapshot_sha256": sha256(candidate_archive),
         "status": "prepared",
     }
     (destination / "manifest.json").write_text(

@@ -26,6 +26,8 @@ OpenSpec остаётся поддерживаемым источником за
 - минимум три повтора с чередованием порядка вариантов;
 - control привязывается к Git commit, candidate — к проверяемому commit;
 - verifier хранится вне генерируемого проекта и не передаётся worker-агенту.
+- неуспех одного варианта фиксируется в metrics, но не останавливает остальные
+  варианты и повторы эксперимента.
 
 Изменение модели, reasoning effort, задания или verifier создаёт новый профиль
 эксперимента и требует отдельного review. Старые raw-результаты не
@@ -40,7 +42,8 @@ python3 benchmarks/go-auth-service/quality/prepare_experiment.py \
 ```
 
 Preflight отклоняет незакоммиченный ref, повторное использование run ID и любое
-появление SDD/OpenSpec-варианта. Он формирует schema v2 task catalog с contracts,
+появление SDD/OpenSpec-варианта. Он сохраняет отдельные immutable Git-снимки
+control и candidate, а также формирует schema v2 task catalog с contracts,
 cohesion keys, external regression check IDs и финальным integration bridge.
 
 ## Метрики
@@ -68,7 +71,8 @@ long-session запуске:
 - созданную роль можно назначить участнику той же организации;
 - `X-Request-ID` совпадает в response header и error envelope;
 - повтор с тем же idempotency key и тем же body возвращает прежний результат;
-- тот же idempotency key с другим body возвращает conflict, а не replay.
+- тот же idempotency key с другим body возвращает HTTP `409 Conflict`, а не
+  replay или иной статус.
 
 Команда запуска verifier и формат машинного отчёта будут находиться в этом
 каталоге. Отчёт каждого запуска сохраняется рядом с новыми immutable raw

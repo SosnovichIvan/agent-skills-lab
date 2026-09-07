@@ -104,8 +104,22 @@ TASK_MARKERS: dict[str, list[tuple[str, tuple[str, ...]]]] = {
     ],
     "7.2": [
         ("role route discriminator", (r"parts\[\d+\]\s*==\s*\"roles\"", r"/roles/")),
-        ("role assignment handler", (r"func\s+\([^)]*\)\s+assignRole\s*\(",)),
-        ("role revocation handler", (r"func\s+\([^)]*\)\s+(?:revoke|remove)Role\s*\(",)),
+        (
+            "role assignment handler",
+            (
+                r"func\s+\([^)]*\)\s+assignRole\s*\(",
+                r"r\.Method\s*==\s*http\.MethodPut",
+                r"\"PUT\s+/v1/organizations/[^\"]*/roles/[^\"]*\"",
+            ),
+        ),
+        (
+            "role revocation handler",
+            (
+                r"func\s+\([^)]*\)\s+(?:revoke|remove)Role\s*\(",
+                r"r\.Method\s*==\s*http\.MethodDelete",
+                r"\"DELETE\s+/v1/organizations/[^\"]*/roles/[^\"]*\"",
+            ),
+        ),
     ],
     "7.3": [
         ("permission check", (r"Permission", r"permission")),
@@ -134,6 +148,17 @@ TASK_MARKERS: dict[str, list[tuple[str, tuple[str, ...]]]] = {
         ("idle timeout", (r"IdleTimeout",)),
     ],
 }
+
+
+def evaluate_markers(combined: str, marker_ids: list[str]) -> dict[str, dict[str, bool]]:
+    marker_results: dict[str, dict[str, bool]] = {}
+    for current_id in marker_ids:
+        groups = TASK_MARKERS.get(current_id, [])
+        marker_results[current_id] = {
+            name: any(re.search(pattern, combined, re.IGNORECASE | re.DOTALL) for pattern in patterns)
+            for name, patterns in groups
+        }
+    return marker_results
 
 
 def run(command: list[str], project: Path, environment: dict[str, str], timeout: int) -> dict[str, Any]:
@@ -179,13 +204,7 @@ def verify(project: Path, task_id: str, final: bool, timeout: int) -> dict[str, 
         ]
     )
     marker_ids = list(TASK_MARKERS) if final else [task_id]
-    marker_results: dict[str, dict[str, bool]] = {}
-    for current_id in marker_ids:
-        groups = TASK_MARKERS.get(current_id, [])
-        marker_results[current_id] = {
-            name: any(re.search(pattern, combined, re.IGNORECASE | re.DOTALL) for pattern in patterns)
-            for name, patterns in groups
-        }
+    marker_results = evaluate_markers(combined, marker_ids)
 
     with tempfile.TemporaryDirectory(prefix="iam-long-verify-") as cache:
         environment = os.environ.copy()

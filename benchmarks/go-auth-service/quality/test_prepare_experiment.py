@@ -32,6 +32,12 @@ class PrepareExperimentTests(unittest.TestCase):
             catalog["tasks"][0]["regression_checks"],
         )
 
+    def test_checked_in_idempotency_contract_requires_http_409(self) -> None:
+        tasks_path = Path(__file__).parents[1] / "long-session" / "tasks.json"
+        tasks = json.loads(tasks_path.read_text(encoding="utf-8"))["tasks"]
+        task = next(item for item in tasks if item["id"] == "8.1")
+        self.assertTrue(any("HTTP 409" in condition for condition in task["done_when"]))
+
     def test_checked_in_profile_contains_no_sdd_variants(self) -> None:
         profile = json.loads(Path(__file__).with_name("experiment.json").read_text(encoding="utf-8"))
         self.assertEqual("standalone", profile["source"])
@@ -59,6 +65,10 @@ class PrepareExperimentTests(unittest.TestCase):
             catalog = json.loads((output / "tasks.json").read_text(encoding="utf-8"))
             self.assertEqual("prepared", manifest["status"])
             self.assertEqual(candidate, manifest["candidate_ref"])
+            self.assertTrue(manifest["control_snapshot_sha256"])
+            self.assertTrue(manifest["candidate_snapshot_sha256"])
+            self.assertTrue((output / "inputs/control/skills/execution-state/SKILL.md").is_file())
+            self.assertTrue((output / "inputs/candidate/skills/execution-state/SKILL.md").is_file())
             self.assertEqual(32, len(catalog["tasks"]))
             with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
                 prepare_experiment.prepare(Path(temporary), "run-1", candidate)

@@ -57,6 +57,14 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def truncate_utf8(value: str, max_bytes: int) -> str:
+    """Return valid UTF-8 text whose encoded representation fits max_bytes."""
+    encoded = value.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return value
+    return encoded[:max_bytes].decode("utf-8", errors="ignore").rstrip()
+
+
 def safe_run_id(value: str) -> str:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,95}", value):
         raise ValueError("run-id must contain only letters, digits, dot, underscore or dash")
@@ -81,6 +89,11 @@ def parse_args() -> argparse.Namespace:
         "--recover-verifier-failure",
         action="store_true",
         help="reverify and accept the last failed chunk without another model turn",
+    )
+    parser.add_argument(
+        "--retry-infrastructure-failure",
+        action="store_true",
+        help="retry the last chunk when every attempt failed before reaching the model",
     )
     parser.add_argument(
         "--run-id",
@@ -615,27 +628,36 @@ def run_skill_task(
     revision = int(current["revision"])
     packet_dir = state_file.parent / "packets"
     packet_dir.mkdir(parents=True, exist_ok=True)
-    worker_run_id = f"t{task_index + 1:02d}-{uuid.uuid4().hex[:16]}"
-    packet_path = packet_dir / f"{task_index + 1:02d}-{worker_run_id}.json"
-    packet_result = run_statectl(
-        statectl,
-        project,
-        [
-            "packet",
-            "--id",
-            state_id,
-            "--project-root",
-            str(project),
-            "--expected-revision",
-            str(revision),
-            "--run-id",
-            worker_run_id,
-            "--max-turns",
-            "8",
-            "--output",
-            str(packet_path),
-        ],
-    )
+    lease = current.get("worker_lease") or {}
+    if lease.get("task_id") == task["id"] and lease.get("run_id"):
+        worker_run_id = lease["run_id"]
+        packet_path = packet_dir / f"{task_index + 1:02d}-{worker_run_id}.json"
+        if not packet_path.is_file():
+            raise RuntimeError(f"leased worker packet is missing: {packet_path}")
+        packet_revision = revision
+    else:
+        worker_run_id = f"t{task_index + 1:02d}-{uuid.uuid4().hex[:16]}"
+        packet_path = packet_dir / f"{task_index + 1:02d}-{worker_run_id}.json"
+        packet_result = run_statectl(
+            statectl,
+            project,
+            [
+                "packet",
+                "--id",
+                state_id,
+                "--project-root",
+                str(project),
+                "--expected-revision",
+                str(revision),
+                "--run-id",
+                worker_run_id,
+                "--max-turns",
+                "8",
+                "--output",
+                str(packet_path),
+            ],
+        )
+        packet_revision = packet_result["revision"]
     packet = read_json(packet_path)
     base_prompt = render(
         prompts / "worker.md",
@@ -698,7 +720,7 @@ def run_skill_task(
             "attempts": attempts,
             "packet_bytes": packet_path.stat().st_size,
             "state_bytes": state_file.stat().st_size,
-            "packet_revision": packet_result["revision"],
+            "packet_revision": packet_revision,
         }, session_id)
     completion_arguments = [
         "complete",
@@ -711,7 +733,7 @@ def run_skill_task(
         "--run-id",
         worker_run_id,
         "--summary",
-        accepted_result["summary"][:1000],
+        truncate_utf8(accepted_result["summary"], 1000),
     ]
     regression_checks = packet.get("task", {}).get("regression_checks", [])
     if regression_checks:
@@ -755,7 +777,7 @@ def run_skill_task(
         "attempts": attempts,
         "packet_bytes": packet_path.stat().st_size,
         "state_bytes": state_file.stat().st_size,
-        "packet_revision": packet_result["revision"],
+        "packet_revision": packet_revision,
         "completion_revision": completion["revision"],
         "next_handoff": completion.get("next_handoff"),
         "review_required": completion.get("review_required", False),
@@ -799,16 +821,21 @@ def run_architecture_review(
         result["status"] = "failed"
         result["error"] = "architecture reviewer did not return a usable result"
         return result
-    command = run_statectl(
-        statectl,
-        project,
-        [
-            "architecture-review", "--id", state_id, "--project-root", str(project),
-            "--expected-revision", str(state["revision"]),
-            "--summary", answer[:900],
-            "--evidence", "independent reviewer ran gofmt, go test and go vet",
-        ],
-    )
+    try:
+        command = run_statectl(
+            statectl,
+            project,
+            [
+                "architecture-review", "--id", state_id, "--project-root", str(project),
+                "--expected-revision", str(state["revision"]),
+                "--summary", truncate_utf8(answer, 1000),
+                "--evidence", "independent reviewer ran gofmt, go test and go vet",
+            ],
+        )
+    except RuntimeError as error:
+        result["status"] = "failed"
+        result["error"] = str(error)
+        return result
     result["status"] = "complete"
     result["controller"] = command
     return result
@@ -1059,6 +1086,42 @@ def main() -> int:
                 print(f"error: cannot resume status {run.get('status')} for {name}", file=sys.stderr)
                 return 2
             if (
+                args.retry_infrastructure_failure
+                and run.get("chunks")
+                and run["chunks"][-1].get("status") == "failed"
+            ):
+                failed_chunk = run["chunks"][-1]
+                attempts = failed_chunk.get("attempts") or []
+                retryable = bool(attempts) and all(
+                    attempt.get("exit_code") != 0
+                    and attempt.get("worker_result") is None
+                    and (attempt.get("usage") or {}).get("total_tokens", 0) == 0
+                    for attempt in attempts
+                )
+                if not retryable:
+                    print(
+                        f"error: last failure is not a pre-model infrastructure failure for {name}",
+                        file=sys.stderr,
+                    )
+                    return 2
+                run.setdefault("infrastructure_failures", []).append(
+                    {
+                        "task_id": failed_chunk.get("task_id"),
+                        "attempts": attempts,
+                        "recorded_at": utc_now(),
+                    }
+                )
+                run["chunks"].pop()
+                run["status"] = "running"
+                run.pop("failure", None)
+                run["totals"] = aggregate_variant(run)
+                save_json(metrics_path, metrics)
+                print(
+                    f"retrying pre-model infrastructure failure for {name} "
+                    f"{failed_chunk.get('task_id')}",
+                    flush=True,
+                )
+            if (
                 args.recover_verifier_failure
                 and run.get("chunks")
                 and run["chunks"][-1].get("status") == "failed"
@@ -1107,7 +1170,7 @@ def main() -> int:
                             "--run-id",
                             lease["run_id"],
                             "--summary",
-                            accepted["summary"][:1000],
+                            truncate_utf8(accepted["summary"], 1000),
                             "--evidence",
                             f"external compile/static gate passed for {failed_task['id']}",
                         ],
@@ -1258,6 +1321,16 @@ def main() -> int:
             else "failed"
         )
         if run["status"] != "complete":
+            failed_gates = []
+            if not final_verification["passed"]:
+                failed_gates.append("compile/static")
+            if not behavior_ok:
+                failed_gates.append("behavior")
+            if not checkbox_ok:
+                failed_gates.append("openspec")
+            if not state_ok:
+                failed_gates.append("execution-state")
+            run["failure"] = "final gates failed: " + ", ".join(failed_gates)
             any_failed = True
         save_json(metrics_path, metrics)
 

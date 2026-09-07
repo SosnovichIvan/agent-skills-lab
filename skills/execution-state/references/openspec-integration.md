@@ -60,5 +60,6 @@ OpenSpec-режим не выбирает Codex, Claude или иной runtime.
 же project root и OpenSpec change. Adapter заново проходит capability
 negotiation и не сохраняется как нормативная часть state.
 
-Для добавления этих правил в проект используй отдельный
-[интеграционный промпт](../prompts/openspec-documentation-integration.md).
+Для добавления этих правил в проект перенеси разделы «Источники истины»,
+«Предусловия» и «Выполнение» в агентную документацию проекта, адаптировав только
+пути и OpenSpec change ID. Не копируй runtime state в нормативные артефакты.

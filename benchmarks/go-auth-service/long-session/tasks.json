@@ -144,7 +144,7 @@
     {
       "id": "8.1",
       "title": "Добавить rate limiting и idempotency keys",
-      "done_when": ["rate limit учитывает IP и authenticated identity", "лимиты конфигурируются", "register и invite поддерживают безопасный idempotent replay"]
+      "done_when": ["rate limit учитывает IP и authenticated identity", "лимиты конфигурируются", "register и invite поддерживают безопасный idempotent replay", "тот же idempotency key с другим body возвращает HTTP 409 Conflict без replay исходного ответа"]
     },
     {
       "id": "8.2",
