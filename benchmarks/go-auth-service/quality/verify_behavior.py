@@ -243,8 +243,12 @@ def _wait_ready(base_url: str, process: subprocess.Popen[bytes], timeout: float)
         if process.poll() is not None:
             raise RuntimeError(f"service exited before readiness with code {process.returncode}")
         try:
-            if _request(base_url, "GET", "/healthz", timeout=0.5).status == 200:
-                return
+            # Readiness here means that the generated process is accepting HTTP
+            # requests.  A health endpoint is introduced by a later benchmark
+            # chunk, so requiring /healthz=200 would reject a live, valid
+            # intermediate implementation before that chunk is reached.
+            _request(base_url, "GET", "/healthz", timeout=0.5)
+            return
         except (OSError, urllib.error.URLError):
             pass
         time.sleep(0.1)

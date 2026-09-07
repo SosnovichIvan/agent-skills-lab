@@ -25,6 +25,16 @@ def response(status: int, data=None, *, error_id: str | None = None):
 
 
 class ExerciseTests(unittest.TestCase):
+    def test_readiness_accepts_any_http_response(self) -> None:
+        process = mock.Mock()
+        process.poll.return_value = None
+        with mock.patch.object(
+            verify_behavior,
+            "_request",
+            return_value=verify_behavior.Response(404, {}, b"not found"),
+        ):
+            verify_behavior._wait_ready("http://example.test", process, 0.1)
+
     def test_per_chunk_selection_rejects_broken_critical_contract(self) -> None:
         checks = [
             {"name": "request_id_consistency", "passed": True},
