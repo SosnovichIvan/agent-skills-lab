@@ -96,9 +96,12 @@ Prompt templates и runtime adapter manifests не копируются в state
 архитектурную проверку после N завершений. `pending_bridge` разрешает следующий
 packet только для задачи `kind=integration`. `next_handoff` — переносимая
 рекомендация `continue`, `reset` или `checkpoint`, а не vendor-команда.
-`architecture-review` принимает summary и evidence размером до 2 KiB каждое,
-но детерминированно сохраняет в `quality.last_review` не более 1 KiB. Полный
-review остаётся во внешнем артефакте или логе и не переносится между workers.
+`architecture-review` принимает typed JSON: `protocol`, `verdict`, `summary`,
+`blockers`, `planned_gaps`, `recommendations` и `checks`. В
+`quality.last_review` детерминированно сохраняется типизированная сводка не
+более 1 KiB; полный review остаётся во внешнем артефакте и не переносится между
+workers. `blocked` создаёт recovery chunk для standalone либо переводит
+OpenSpec state в `blocked`; recovery всегда требует повторного review.
 
 ## Язык сохраняемых данных
 
@@ -208,21 +211,15 @@ revision.
   --entry-json '{"path":"internal/auth/token.go","purpose":"token lifecycle","areas":["auth"],"symbols":["Issuer","Validate"]}'
 
 <STATECTL> architecture-review --id auth --project-root . \
-  --expected-revision 2 --summary "Module boundaries remain intact" \
-  --evidence "Dependency graph and wiring verified"
+  --expected-revision 2 \
+  --review-json '{"protocol":"execution-state.review/v1","verdict":"passed","summary":"Module boundaries remain intact","blockers":[],"planned_gaps":[],"recommendations":[],"checks":[{"id":"architecture-contracts","status":"passed","summary":"Dependency graph and wiring verified"}]}'
 
 <STATECTL> validate --id auth --project-root .
 ```
 
-Незавершённый state schema v3 обновляется явно:
-
-```text
-<STATECTL> migrate --id auth --project-root . --expected-revision <CURRENT>
-```
-
-Миграция повышает revision, переводит standalone ledger v1 в v2 и добавляет
-безопасные defaults quality/task-contract полей. Активный worker lease нужно
-сначала принять либо заблокировать старой версией controller.
+State с другой `schema_version` отклоняется без изменения. Заверши его
+совместимым release либо создай новый state текущей версии; встроенной миграции
+между версиями нет.
 
 `runtime-plan` всегда требует state binding: укажи `--id` вместе с
 `--project-root` либо `--state` вместе с соответствующим `--project-root`. Он

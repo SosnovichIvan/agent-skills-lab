@@ -1,8 +1,0 @@
-2026-09-03T07:45:47.574395Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T07:45:48.413456Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
-2026-09-03T07:45:48.414330Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
-2026-09-03T07:45:48.414657Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
-2026-09-03T07:45:48.415762Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
-2026-09-03T07:47:04.738594Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
-2026-09-03T07:48:00.696958Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)
-2026-09-03T07:48:15.582833Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)

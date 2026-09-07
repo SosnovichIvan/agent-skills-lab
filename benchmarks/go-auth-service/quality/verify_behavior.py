@@ -228,6 +228,15 @@ def exercise(base_url: str) -> list[dict[str, Any]]:
     return checks
 
 
+def select_checks(
+    checks: list[dict[str, Any]],
+    selected: set[str] | None,
+) -> list[dict[str, Any]]:
+    if selected is None:
+        return checks
+    return [check for check in checks if check.get("name") in selected]
+
+
 def _wait_ready(base_url: str, process: subprocess.Popen[bytes], timeout: float) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -242,7 +251,11 @@ def _wait_ready(base_url: str, process: subprocess.Popen[bytes], timeout: float)
     raise RuntimeError("service readiness timeout")
 
 
-def verify(project: Path, timeout: float) -> dict[str, Any]:
+def verify(
+    project: Path,
+    timeout: float,
+    selected_checks: set[str] | None = None,
+) -> dict[str, Any]:
     project = project.resolve()
     started = time.monotonic()
     go_files = sorted(project.rglob("*.go"))
@@ -297,7 +310,7 @@ def verify(project: Path, timeout: float) -> dict[str, Any]:
         )
         try:
             _wait_ready(base_url, process, min(timeout, 15))
-            report["checks"] = exercise(base_url)
+            report["checks"] = select_checks(exercise(base_url), selected_checks)
         except Exception as error:  # report infrastructure/service failures as data
             report["runtime_error"] = str(error)
         finally:
@@ -319,8 +332,9 @@ def main() -> int:
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--timeout", type=float, default=60)
+    parser.add_argument("--check", action="append", default=[])
     args = parser.parse_args()
-    report = verify(args.project, args.timeout)
+    report = verify(args.project, args.timeout, set(args.check) or None)
     payload = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

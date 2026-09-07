@@ -1,2 +1,0 @@
-2026-09-03T09:12:42.646972Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T09:12:47.649019Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit

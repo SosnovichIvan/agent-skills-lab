@@ -25,6 +25,17 @@ def response(status: int, data=None, *, error_id: str | None = None):
 
 
 class ExerciseTests(unittest.TestCase):
+    def test_per_chunk_selection_rejects_broken_critical_contract(self) -> None:
+        checks = [
+            {"name": "request_id_consistency", "passed": True},
+            {"name": "idempotency_changed_body_conflict", "passed": False},
+            {"name": "custom_role_creation", "passed": True},
+        ]
+        selected = verify_behavior.select_checks(
+            checks, {"idempotency_changed_body_conflict"}
+        )
+        self.assertEqual(1, len(selected))
+        self.assertFalse(all(check["passed"] for check in selected))
     def test_contract_flow_passes_with_correct_service(self) -> None:
         created = response(201, {"id": "owner-1"})
         scripted = [

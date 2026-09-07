@@ -1,0 +1,10 @@
+{
+  "name": "execution-state",
+  "version": "0.5.0-rc.1",
+  "state_schema": 4,
+  "task_ledger_schema": 2,
+  "worker_protocol": "execution-state.worker/v3",
+  "packet_version": 3,
+  "adapter_manifest_schema": 1,
+  "minimum_python": "3.9"
+}

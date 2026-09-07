@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol": {"type": "string", "const": "execution-state.review/v1"},
+    "verdict": {"type": "string", "enum": ["passed", "blocked"]},
+    "summary": {"type": "string", "minLength": 1},
+    "blockers": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contract": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1},
+          "affected_files": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
+          },
+          "regression_check": {"type": "string", "minLength": 1}
+        },
+        "required": ["contract", "evidence", "affected_files", "regression_check"]
+      }
+    },
+    "planned_gaps": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {"type": "string", "enum": ["passed", "failed"]},
+          "summary": {"type": "string", "minLength": 1}
+        },
+        "required": ["id", "status", "summary"]
+      }
+    }
+  },
+  "required": [
+    "protocol", "verdict", "summary", "blockers", "planned_gaps",
+    "recommendations", "checks"
+  ]
+}

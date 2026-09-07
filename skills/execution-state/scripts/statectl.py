@@ -29,6 +29,7 @@ except ImportError:  # pragma: no cover - exercised only on non-POSIX hosts
     fcntl = None  # type: ignore[assignment]
 
 from cli_adapters import (
+    MANIFEST_VERSION,
     AdapterError,
     build_runtime_plan,
     probe_runtime,
@@ -38,8 +39,10 @@ from cli_adapters import (
 
 SCHEMA_VERSION = 4
 TASK_LEDGER_VERSION = 2
-PACKET_VERSION = 2
-WORKER_PROTOCOL = "execution-state.worker/v2"
+PACKET_VERSION = 3
+WORKER_PROTOCOL = "execution-state.worker/v3"
+SKILL_ROOT = Path(__file__).resolve().parents[1]
+RELEASE_MANIFEST = SKILL_ROOT / "release.json"
 CONTEXT_MAP_VERSION = 1
 MAX_STATE_BYTES = 8 * 1024
 MAX_PACKET_BYTES = 12 * 1024
@@ -51,6 +54,7 @@ MAX_STRING_BYTES = 4 * 1024
 MAX_REVIEW_INPUT_BYTES = 2 * 1024
 MAX_REVIEW_RECORD_BYTES = 1024
 MAX_REVIEW_EVIDENCE_RECORD_BYTES = 256
+ARCHITECTURE_REVIEW_PROTOCOL = "execution-state.review/v1"
 STATE_STATUSES = {"planned", "in_progress", "blocked", "complete"}
 TASK_STATUSES = {"pending", "in_progress", "blocked", "complete"}
 SOURCE_KINDS = {"standalone", "openspec"}
@@ -86,6 +90,31 @@ class StateCtlError(ValueError):
         super().__init__(message)
         self.kind = kind
         self.code = code
+
+
+def _release_info() -> dict[str, Any]:
+    release = _read_json(RELEASE_MANIFEST, "release manifest")
+    expected = {
+        "name": "execution-state",
+        "state_schema": SCHEMA_VERSION,
+        "task_ledger_schema": TASK_LEDGER_VERSION,
+        "worker_protocol": WORKER_PROTOCOL,
+        "packet_version": PACKET_VERSION,
+        "adapter_manifest_schema": MANIFEST_VERSION,
+        "minimum_python": "3.9",
+    }
+    for field, value in expected.items():
+        if release.get(field) != value:
+            raise StateCtlError(f"release manifest {field} does not match runtime")
+    version = release.get("version")
+    if not isinstance(version, str) or not re.fullmatch(
+        r"(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*)){2}(?:-[0-9A-Za-z.-]+)?",
+        version,
+    ):
+        raise StateCtlError("release manifest version is not valid SemVer")
+    if set(release) != {*expected, "version"}:
+        raise StateCtlError("release manifest fields are invalid")
+    return release
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
@@ -201,6 +230,127 @@ def _parse_checks(values: list[str]) -> list[dict[str, str]]:
             raise StateCtlError(f"invalid --check-json: {exc}") from exc
         checks.append(item)
     return _check_list(checks)
+
+
+def _parse_architecture_review(value: str) -> dict[str, Any]:
+    try:
+        review = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise StateCtlError(f"invalid --review-json: {exc}") from exc
+    expected = {
+        "protocol", "verdict", "summary", "blockers", "planned_gaps",
+        "recommendations", "checks",
+    }
+    if not isinstance(review, dict) or set(review) != expected:
+        raise StateCtlError("architecture review fields are invalid")
+    if review.get("protocol") != ARCHITECTURE_REVIEW_PROTOCOL:
+        raise StateCtlError(
+            f"architecture review protocol must equal {ARCHITECTURE_REVIEW_PROTOCOL}"
+        )
+    verdict = review.get("verdict")
+    if verdict not in {"passed", "blocked"}:
+        raise StateCtlError("architecture review verdict must be passed or blocked")
+    summary = _require_text(
+        review.get("summary"),
+        "architecture review summary",
+        max_bytes=MAX_REVIEW_INPUT_BYTES,
+    )
+    blockers = review.get("blockers")
+    if not isinstance(blockers, list) or len(blockers) > 4:
+        raise StateCtlError("architecture review blockers must contain at most 4 items")
+    normalized_blockers: list[dict[str, Any]] = []
+    for index, blocker in enumerate(blockers):
+        if not isinstance(blocker, dict) or set(blocker) != {
+            "contract", "evidence", "affected_files", "regression_check",
+        }:
+            raise StateCtlError(f"architecture review blockers[{index}] fields are invalid")
+        normalized_blockers.append(
+            {
+                "contract": _require_text(
+                    blocker.get("contract"),
+                    f"architecture review blockers[{index}].contract",
+                    max_bytes=512,
+                ),
+                "evidence": _require_text(
+                    blocker.get("evidence"),
+                    f"architecture review blockers[{index}].evidence",
+                    max_bytes=512,
+                ),
+                "affected_files": _string_list(
+                    blocker.get("affected_files"),
+                    f"architecture review blockers[{index}].affected_files",
+                    max_items=8,
+                    item_bytes=256,
+                ),
+                "regression_check": _safe_id(
+                    blocker.get("regression_check"),
+                    f"architecture review blockers[{index}].regression_check",
+                ),
+            }
+        )
+    planned_gaps = _string_list(
+        review.get("planned_gaps"),
+        "architecture review planned_gaps",
+        max_items=8,
+        item_bytes=MAX_REVIEW_INPUT_BYTES,
+    )
+    recommendations = _string_list(
+        review.get("recommendations"),
+        "architecture review recommendations",
+        max_items=8,
+        item_bytes=MAX_REVIEW_INPUT_BYTES,
+    )
+    checks = _check_list(review.get("checks"), "architecture review checks")
+    if verdict == "passed" and normalized_blockers:
+        raise StateCtlError("passed architecture review must not contain blockers")
+    if verdict == "passed" and any(check["status"] == "failed" for check in checks):
+        raise StateCtlError("passed architecture review must not contain failed checks")
+    if verdict == "blocked" and not normalized_blockers:
+        raise StateCtlError("blocked architecture review requires at least one blocker")
+    return {
+        "protocol": ARCHITECTURE_REVIEW_PROTOCOL,
+        "verdict": verdict,
+        "summary": summary,
+        "blockers": normalized_blockers,
+        "planned_gaps": planned_gaps,
+        "recommendations": recommendations,
+        "checks": checks,
+    }
+
+
+def _compact_architecture_review(review: dict[str, Any]) -> str:
+    """Keep typed review classes in state; full review remains in the run artifact."""
+    compact = {
+        "verdict": review["verdict"],
+        "summary": _truncate_utf8(review["summary"], 256),
+        "blockers": {
+            "count": len(review["blockers"]),
+            "sample": [
+                _truncate_utf8(item["contract"], 96) for item in review["blockers"][:2]
+            ],
+        },
+        "planned_gaps": {
+            "count": len(review["planned_gaps"]),
+            "sample": [_truncate_utf8(item, 96) for item in review["planned_gaps"][:2]],
+        },
+        "recommendations": {
+            "count": len(review["recommendations"]),
+            "sample": [_truncate_utf8(item, 96) for item in review["recommendations"][:2]],
+        },
+        "checks": [
+            {"id": item["id"], "status": item["status"]} for item in review["checks"][:8]
+        ],
+    }
+    encoded = json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
+    if _byte_len(encoded) > MAX_REVIEW_RECORD_BYTES:
+        compact["summary"] = _truncate_utf8(review["summary"], 96)
+        compact["checks"] = compact["checks"][:4]
+        for field in ("blockers", "planned_gaps", "recommendations"):
+            compact[field]["sample"] = compact[field]["sample"][:1]
+        encoded = json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
+    if _byte_len(encoded) > MAX_REVIEW_RECORD_BYTES:
+        raise StateCtlError("compacted architecture review exceeds state limit")
+    return encoded
 
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
@@ -1722,8 +1872,10 @@ def _complete_with_authority_locked(
     quality = state["quality"]
     quality["completed_chunks"] += 1
     reasons: list[str] = []
-    if remaining is not None and quality["completed_chunks"] % quality["review_interval"] == 0:
+    if quality["completed_chunks"] % quality["review_interval"] == 0:
         reasons.append(f"periodic review after {quality['completed_chunks']} chunks")
+    if task_id.startswith("review-recovery-"):
+        reasons.append("re-review after architecture recovery")
     if completed_task["requires_bridge"] or len(completed_task["affected_areas"]) > 1:
         quality["pending_bridge"] = True
     if completed_task["kind"] == "integration":
@@ -1834,29 +1986,126 @@ def command_architecture_review(args: argparse.Namespace) -> dict[str, Any]:
     _expect_revision(current, args.expected_revision)
     if current.get("worker_lease") is not None:
         raise StateCtlError("cannot review architecture while a worker lease is active")
-    summary = _require_text(args.summary, "summary", max_bytes=MAX_REVIEW_INPUT_BYTES)
-    evidence = _require_text(args.evidence, "evidence", max_bytes=MAX_REVIEW_INPUT_BYTES)
-    separator = "; evidence: "
-    compact_evidence = _truncate_utf8(evidence, MAX_REVIEW_EVIDENCE_RECORD_BYTES)
-    summary_budget = (
-        MAX_REVIEW_RECORD_BYTES
-        - _byte_len(separator)
-        - _byte_len(compact_evidence)
-    )
-    compact_summary = _truncate_utf8(summary, summary_budget)
+    review = _parse_architecture_review(args.review_json)
+    compact_review = _compact_architecture_review(review)
     state = copy.deepcopy(current)
-    state["quality"]["review_required"] = False
-    state["quality"]["review_reasons"] = []
-    state["quality"]["last_review"] = f"{compact_summary}{separator}{compact_evidence}"
-    if state["quality"]["pending_bridge"]:
+    state["quality"]["last_review"] = compact_review
+    recovery_task: dict[str, Any] | None = None
+    if review["verdict"] == "passed":
+        state["quality"]["review_required"] = False
+        state["quality"]["review_reasons"] = []
+        if state["quality"]["pending_bridge"]:
+            state["quality"]["next_handoff"] = "checkpoint"
+        elif (
+            state["source"]["kind"] == "standalone"
+            and state.get("active_task") is not None
+            and state.get("last_result", {}).get("id", "").startswith("review-recovery-")
+        ):
+            _, _, ledger_tasks = _load_ledger(path)
+            recovery_index = next(
+                (
+                    index for index, task in enumerate(ledger_tasks)
+                    if task["id"] == state["last_result"]["id"]
+                ),
+                None,
+            )
+            previous = next(
+                (
+                    task for task in reversed(ledger_tasks[:recovery_index])
+                    if task["status"] == "complete" and not task["id"].startswith("review-recovery-")
+                ),
+                None,
+            ) if recovery_index is not None else None
+            if previous and previous["cohesion_key"] == state["active_task"]["cohesion_key"]:
+                state["quality"]["next_handoff"] = "continue"
+            elif any(
+                state["execution"]["capabilities"].get(name)
+                for name in ("fresh_context", "in_place_compaction")
+            ):
+                state["quality"]["next_handoff"] = "reset"
+            else:
+                state["quality"]["next_handoff"] = "checkpoint"
+        _advance(state, checkpoint_ready=True, reason="architecture review passed")
+        _validate_state(state, path, root)
+        _atomic_write_json(path, state)
+    elif state["source"]["kind"] == "standalone":
+        ledger_path, current_ledger, _ = _load_ledger(path)
+        ledger = copy.deepcopy(current_ledger)
+        active = state.get("active_task")
+        if active is None:
+            active_index = len(ledger["tasks"])
+        else:
+            active_id = active["id"]
+            active_index = next(
+                (index for index, task in enumerate(ledger["tasks"]) if task["id"] == active_id),
+                None,
+            )
+            if active_index is None:
+                raise StateCtlError("active task is absent from standalone task ledger")
+            ledger["tasks"][active_index]["status"] = "pending"
+        recovery_id = f"review-recovery-{current['revision'] + 1}"
+        if any(task["id"] == recovery_id for task in ledger["tasks"]):
+            raise StateCtlError(f"recovery task already exists: {recovery_id}")
+        blocker_contracts = [item["contract"] for item in review["blockers"]]
+        affected_files = list(dict.fromkeys(
+            path_value
+            for blocker in review["blockers"]
+            for path_value in blocker["affected_files"]
+        ))
+        regression_checks = list(dict.fromkeys(
+            blocker["regression_check"] for blocker in review["blockers"]
+        ))
+        recovery_task = _normalize_task(
+            {
+                "id": recovery_id,
+                "title": "Resolve architecture review blockers",
+                "done_when": blocker_contracts,
+                "kind": "architecture",
+                "cohesion_key": "review-recovery",
+                "affected_areas": ["architecture"],
+                "reads": affected_files,
+                "writes": affected_files,
+                "contracts": blocker_contracts,
+                "regression_checks": regression_checks,
+            },
+            active_index,
+        )
+        recovery_task["status"] = "in_progress"
+        ledger["tasks"].insert(active_index, recovery_task)
+        state["status"] = "in_progress"
+        state["active_task"] = _active_from_task(recovery_task, "standalone")
+        state["next_action"] = _task_next_action(recovery_task)
+        state["blocker"] = None
+        state["quality"]["review_required"] = False
+        state["quality"]["review_reasons"] = []
         state["quality"]["next_handoff"] = "checkpoint"
-    _advance(state, checkpoint_ready=True, reason="architecture review recorded")
-    _validate_state(state, path, root)
-    _atomic_write_json(path, state)
+        _advance(state, checkpoint_ready=True, reason="architecture recovery task created")
+        _validate_task_ledger(ledger)
+        _validate_state(state, path, root, ledger_override=ledger)
+        _write_pair_with_rollback(
+            root,
+            ledger_path,
+            _json_bytes(ledger),
+            path,
+            _json_bytes(state),
+        )
+    else:
+        state["status"] = "blocked"
+        state["active_task"]["status"] = "blocked"
+        state["blocker"] = review["blockers"][0]["contract"]
+        state["next_action"] = "Resolve architecture review blockers"
+        state["quality"]["review_required"] = True
+        state["quality"]["review_reasons"] = ["architecture review blockers remain"]
+        state["quality"]["next_handoff"] = "checkpoint"
+        _advance(state, checkpoint_ready=True, reason="architecture review blocked")
+        _validate_state(state, path, root)
+        _atomic_write_json(path, state)
     return {
         "ok": True,
         "command": "architecture-review",
         "revision": state["revision"],
+        "verdict": review["verdict"],
+        "recovery_task": recovery_task,
         "pending_bridge": state["quality"]["pending_bridge"],
     }
 
@@ -2018,7 +2267,10 @@ def command_packet(args: argparse.Namespace) -> dict[str, Any]:
         "run_id": run_id,
         "state_id": state["id"],
         "based_on_revision": state["revision"],
-        "revision": state["revision"],
+        "language_policy": {
+            "operational": "en",
+            "source_content": "preserve",
+        },
         "source": packet_source,
         "goal": state["goal"],
         "implementation_ref": state["implementation_ref"],
@@ -2090,91 +2342,9 @@ def command_validate(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def command_migrate(args: argparse.Namespace) -> dict[str, Any]:
-    root, path = _state_path(args)
-    raw = _read_json(path, "state")
-    revision = raw.get("revision")
-    if revision != args.expected_revision:
-        raise StateCtlError(
-            f"revision conflict: expected {args.expected_revision}, current {revision}",
-            kind="revision_conflict",
-            code=ERROR_CONFLICT,
-        )
-    if raw.get("schema_version") == SCHEMA_VERSION:
-        _validate_state(raw, path, root)
-        return {"ok": True, "command": "migrate", "migrated": False, "revision": revision}
-    if raw.get("schema_version") != 3:
-        raise StateCtlError("only execution-state schema v3 can be migrated")
-    if raw.get("worker_lease") is not None:
-        raise StateCtlError("release or block the active worker lease before migration")
-
-    state = copy.deepcopy(raw)
-    active_old = state.get("active_task")
-    source = state.get("source", {})
-    source_kind = source.get("kind")
-    ledger: dict[str, Any] | None = None
-    ledger_path: Path | None = None
-    completed_chunks = 0
-    if source_kind == "standalone":
-        ledger_path = _task_ledger_path(path)
-        old_ledger = _read_json(ledger_path, "standalone task ledger")
-        if old_ledger.get("schema_version") != 1 or not isinstance(old_ledger.get("tasks"), list):
-            raise StateCtlError("schema v3 migration requires task ledger v1")
-        migrated_tasks = []
-        for index, old_task in enumerate(old_ledger["tasks"]):
-            task = _normalize_task(old_task, index)
-            task["status"] = old_task.get("status")
-            if task["status"] == "complete":
-                task["evidence"] = old_task.get("evidence", [])
-                task["checks"] = []
-                task["summary"] = old_task.get("summary")
-                completed_chunks += 1
-            migrated_tasks.append(task)
-        ledger = {"schema_version": TASK_LEDGER_VERSION, "tasks": migrated_tasks}
-        matching = next(
-            (task for task in migrated_tasks if active_old and task["id"] == active_old.get("id")),
-            None,
-        )
-    elif source_kind == "openspec":
-        tasks_path = _inside(root / source["tasks_path"], root, "OpenSpec tasks path")
-        _, tasks = _parse_openspec_tasks(tasks_path)
-        completed_chunks = sum(1 for task in tasks if task["complete"])
-        matching = next(
-            (task for task in tasks if active_old and task["id"] == active_old.get("id")),
-            None,
-        )
-    else:
-        raise StateCtlError("schema v3 state has an invalid source")
-
-    if active_old is not None:
-        if matching is None:
-            raise StateCtlError("active task cannot be mapped during migration")
-        active = _active_from_task(matching, source_kind)
-        active["status"] = active_old.get("status")
-        active["evidence"] = active_old.get("evidence", [])
-        active["artifacts"] = active_old.get("artifacts", [])
-        state["active_task"] = active
-    if isinstance(state.get("last_result"), dict):
-        state["last_result"]["checks"] = []
-    state["schema_version"] = SCHEMA_VERSION
-    state["quality"] = {
-        "invariants": [],
-        "completed_chunks": completed_chunks,
-        "review_interval": 8,
-        "review_required": False,
-        "review_reasons": [],
-        "last_review": None,
-        "pending_bridge": False,
-        "next_handoff": "checkpoint",
-    }
-    _advance(state, checkpoint_ready=bool(state.get("checkpoint", {}).get("ready")), reason="migrated from schema v3")
-    _validate_state(state, path, root, ledger_override=ledger)
-    if ledger is not None and ledger_path is not None:
-        _validate_task_ledger(ledger)
-        _write_pair_with_rollback(root, ledger_path, _json_bytes(ledger), path, _json_bytes(state))
-    else:
-        _atomic_write_json(path, state)
-    return {"ok": True, "command": "migrate", "migrated": True, "revision": state["revision"]}
+def command_version(args: argparse.Namespace) -> dict[str, Any]:
+    del args
+    return {"ok": True, "command": "version", **_release_info()}
 
 
 def command_runtime_probe(args: argparse.Namespace) -> dict[str, Any]:
@@ -2190,8 +2360,11 @@ def command_runtime_probe(args: argparse.Namespace) -> dict[str, Any]:
 def _validate_worker_packet(packet: dict[str, Any]) -> None:
     required = {
         "protocol",
+        "packet_version",
         "run_id",
+        "state_id",
         "based_on_revision",
+        "language_policy",
         "source",
         "goal",
         "implementation_ref",
@@ -2206,8 +2379,7 @@ def _validate_worker_packet(packet: dict[str, Any]) -> None:
     missing = sorted(required - set(packet))
     if missing:
         raise StateCtlError(f"worker packet missing fields: {', '.join(missing)}")
-    allowed = required | {"packet_version", "state_id", "revision"}
-    extra = sorted(set(packet) - allowed)
+    extra = sorted(set(packet) - required)
     if extra:
         raise StateCtlError(f"worker packet has unsupported fields: {', '.join(extra)}")
     if packet.get("protocol") != WORKER_PROTOCOL:
@@ -2215,13 +2387,15 @@ def _validate_worker_packet(packet: dict[str, Any]) -> None:
     if packet.get("packet_version") != PACKET_VERSION:
         raise StateCtlError(f"worker packet packet_version must equal {PACKET_VERSION}")
     _safe_id(packet.get("run_id"), "worker packet run_id")
-    if "state_id" in packet:
-        _safe_id(packet.get("state_id"), "worker packet state_id")
+    _safe_id(packet.get("state_id"), "worker packet state_id")
     revision = packet.get("based_on_revision")
     if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
         raise StateCtlError("worker packet based_on_revision is invalid")
-    if "revision" in packet and packet["revision"] != revision:
-        raise StateCtlError("worker packet legacy revision disagrees with based_on_revision")
+    if packet.get("language_policy") != {
+        "operational": "en",
+        "source_content": "preserve",
+    }:
+        raise StateCtlError("worker packet language_policy is invalid")
     source = packet.get("source")
     if not isinstance(source, dict) or source.get("kind") not in SOURCE_KINDS:
         raise StateCtlError("worker packet source is invalid")
@@ -2494,8 +2668,7 @@ def build_parser() -> argparse.ArgumentParser:
     architecture_review = subparsers.add_parser("architecture-review")
     _add_state_location(architecture_review)
     architecture_review.add_argument("--expected-revision", type=int, required=True)
-    architecture_review.add_argument("--summary", required=True)
-    architecture_review.add_argument("--evidence", required=True)
+    architecture_review.add_argument("--review-json", required=True)
     architecture_review.set_defaults(handler=_locked_state_command(command_architecture_review))
 
     context_map = subparsers.add_parser("context-map-update")
@@ -2508,10 +2681,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_state_location(validate)
     validate.set_defaults(handler=_locked_state_command(command_validate))
 
-    migrate = subparsers.add_parser("migrate")
-    _add_state_location(migrate)
-    migrate.add_argument("--expected-revision", type=int, required=True)
-    migrate.set_defaults(handler=_locked_state_command(command_migrate))
+    version = subparsers.add_parser("version")
+    version.set_defaults(handler=command_version)
 
     runtime_probe = subparsers.add_parser("runtime-probe")
     _add_runtime_options(runtime_probe)

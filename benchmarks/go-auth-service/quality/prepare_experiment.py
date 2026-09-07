@@ -32,7 +32,10 @@ def read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def enrich_tasks(tasks: list[dict[str, Any]]) -> dict[str, Any]:
+def enrich_tasks(
+    tasks: list[dict[str, Any]],
+    context_policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     enriched = []
     for task in tasks:
         task_id = str(task["id"])
@@ -54,7 +57,14 @@ def enrich_tasks(tasks: list[dict[str, Any]]) -> dict[str, Any]:
                 "requires_bridge": task_id == "8.3",
             }
         )
-    return {"schema_version": 2, "tasks": enriched}
+    return {
+        "schema_version": 2,
+        "context_policy": context_policy or {
+            "discovery_required": True,
+            "reason": "Concrete files are discovered within affected areas for implementation-independent comparison.",
+        },
+        "tasks": enriched,
+    }
 
 
 def sha256(path: Path) -> str:
@@ -125,15 +135,16 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
     destination = root.resolve() / run_id
     if destination.exists():
         raise ValueError(f"refusing to overwrite experiment: {destination}")
-    source_tasks_path = benchmark / "long-session" / "tasks.json"
-    source_tasks = read_json(source_tasks_path).get("tasks")
+    source_tasks_path = quality / "tasks.json"
+    source_catalog = read_json(source_tasks_path)
+    source_tasks = source_catalog.get("tasks")
     if not isinstance(source_tasks, list) or len(source_tasks) != 32:
-        raise ValueError("expected the fixed 32-task long-session catalog")
+        raise ValueError("expected the fixed 32-task quality catalog")
     destination.mkdir(parents=True)
     inputs = destination / "inputs"
     control_archive = snapshot_skill(repo_root, profile["control_ref"], inputs, "control")
     candidate_archive = snapshot_skill(repo_root, candidate_ref, inputs, "candidate")
-    catalog = enrich_tasks(source_tasks)
+    catalog = enrich_tasks(source_tasks, source_catalog.get("context_policy"))
     catalog_path = destination / "tasks.json"
     catalog_path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     manifest = {

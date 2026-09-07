@@ -1,4 +1,4 @@
-# Worker protocol v2
+# Worker protocol v3
 
 Coordinator — единственный писатель state и task ledger. Worker получает один
 bounded semantic chunk, изменяет только разрешённые артефакты и возвращает
@@ -8,12 +8,15 @@ bounded semantic chunk, изменяет только разрешённые а�
 
 ```json
 {
-  "protocol": "execution-state.worker/v2",
-  "packet_version": 2,
+  "protocol": "execution-state.worker/v3",
+  "packet_version": 3,
   "run_id": "generated-id",
   "state_id": "add-rate-limit",
   "based_on_revision": 8,
-  "revision": 8,
+  "language_policy": {
+    "operational": "en",
+    "source_content": "preserve"
+  },
   "source": {"kind": "standalone"},
   "goal": "Завершить проверяемый результат",
   "implementation_ref": "/backend-api",
@@ -62,16 +65,18 @@ bounded semantic chunk, изменяет только разрешённые а�
 Packet не содержит transcript, завершённые задачи, скрытые рассуждения, полные
 логи и vendor/runtime metadata.
 
-Операционные поля packet (`next_action`, `last_observation`, context `purpose`)
-пишутся на кратком техническом английском. Нормативные поля, импортированные из
-запроса или task source (`goal`, title, `done_when`, constraints, contracts,
-invariants), сохраняют исходный язык и точную формулировку.
+`language_policy` является обязательным переносимым контрактом. Значение
+`operational: en` требует краткий технический английский для создаваемых worker
+операционных полей. Значение `source_content: preserve` запрещает переводить
+нормативные поля, импортированные из запроса или task source (`goal`, title,
+`done_when`, constraints, contracts, invariants), и требует сохранить их точную
+формулировку.
 
 ## Result
 
 ```json
 {
-  "protocol": "execution-state.result/v2",
+  "protocol": "execution-state.result/v3",
   "run_id": "generated-id",
   "based_on_revision": 8,
   "task_id": "2.1",
@@ -96,9 +101,9 @@ invariants), сохраняют исходный язык и точную фор
 последний ответ содержит один JSON между маркерами:
 
 ```text
----EXECUTION_STATE_RESULT_V2---
+---EXECUTION_STATE_RESULT_V3---
 {...}
----END_EXECUTION_STATE_RESULT_V2---
+---END_EXECUTION_STATE_RESULT_V3---
 ```
 
 ## Приём

@@ -1,2 +1,0 @@
-2026-09-03T08:50:15.767239Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T08:51:16.727882Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)

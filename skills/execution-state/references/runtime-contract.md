@@ -77,6 +77,18 @@ cold start и rehydration packet. Для соседних chunks с одним `
    параметры;
 6. не передавать предыдущие сообщения, рассуждения и полные логи.
 
+Checkpoint считается reset-ready только когда state валиден и укладывается в
+лимит, `next_action` задаёт одно действие, изменённые artifacts перечислены,
+объявленные regression checks имеют structured status `passed`, а observation
+содержит факт вместо сырого лога. При blocker запиши недостающий ввод и один
+способ продолжения. Не создавай checkpoint посреди миграции, интерактивной
+операции или непроверенного изменения.
+
+Выбирай `continue` для соседнего chunk с тем же `cohesion_key` и ещё полезным
+локальным context; `reset` — при смене ключа и подтверждённой reset capability;
+`checkpoint` — для manual handoff или lite. Resume/fork не считаются reset,
+если переносят предыдущую историю.
+
 Перед packet controller запрещает пропуск обязательного architecture review и
 запрещает обычный implementation chunk, пока cross-area изменение ожидает
 `kind=integration`. Релевантные записи context map выбираются по areas и
@@ -89,6 +101,10 @@ Worker возвращает result envelope с `run_id` и `based_on_revision`. 
 обновляет state; только `complete` обновляет OpenSpec checkbox. Невалидный
 envelope не завершает задачу; допускается максимум одна попытка восстановить
 формат.
+
+После ответа worker lease снимается только через revision-bound `observe`,
+`complete` или `block`. Не бросай state с активным lease и не создавай
+заменяющий packet.
 
 ## Безопасность
 

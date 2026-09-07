@@ -3,7 +3,7 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "protocol": {"type": "string", "const": "execution-state.result/v3"},
+    "protocol": {"type": "string", "const": "execution-state.result/v2"},
     "run_id": {"type": "string", "minLength": 1},
     "based_on_revision": {"type": "integer", "minimum": 0},
     "task_id": {"type": "string", "minLength": 1},

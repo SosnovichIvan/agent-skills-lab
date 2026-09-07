@@ -67,9 +67,9 @@ statectl complete | statectl block
 statectl checkpoint
 statectl architecture-review
 statectl context-map-update
-statectl migrate
 statectl packet --expected-revision <N> --run-id <ID> --output <file>
 statectl validate
+statectl version
 statectl runtime-probe | statectl runtime-plan
 ```
 
@@ -78,9 +78,8 @@ statectl runtime-probe | statectl runtime-plan
 переходы и лимиты; не создавай ручные JSON Patch-файлы и не запускай отдельную
 валидацию после каждой успешной операции.
 
-Если найден state schema v3, сначала выполни явный `migrate` с текущей
-revision. Не редактируй state вручную; state с активным worker lease сначала
-нужно принять или заблокировать по старому controller.
+State другой schema version не изменяй и не мигрируй автоматически: заверши его
+совместимой версией skill либо начни новый state. Не редактируй state вручную.
 
 ## Рабочий цикл
 
@@ -101,7 +100,10 @@ revision. Не редактируй state вручную; state с активн�
    как structured checks. Свободный evidence допустим лишь когда checks не были
    объявлены. OpenSpec checkbox меняет deterministic core, а не worker.
 7. Если controller требует architecture review, проверь границы, wiring,
-   публичные контракты и дублирование, затем запиши `architecture-review`.
+   публичные контракты и дублирование. Передай structured review с `verdict`,
+   `blockers`, `planned_gaps`, `recommendations` и `checks` через
+   `architecture-review --review-json`. `passed` снимает gate; `blocked`
+   создаёт standalone recovery chunk или блокирует OpenSpec state.
    Cross-area chunk должен переходить в явно запланированный `integration`
    chunk; controller блокирует обычную реализацию при pending bridge.
 8. Перед сменой контекста создай валидный checkpoint. Затем один раз вызови

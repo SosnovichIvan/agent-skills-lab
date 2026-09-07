@@ -25,6 +25,8 @@ class PrepareExperimentTests(unittest.TestCase):
         ]
         catalog = prepare_experiment.enrich_tasks(tasks)
         self.assertEqual(2, catalog["schema_version"])
+        self.assertTrue(catalog["context_policy"]["discovery_required"])
+        self.assertTrue(catalog["context_policy"]["reason"])
         self.assertTrue(catalog["tasks"][0]["requires_bridge"])
         self.assertEqual("integration", catalog["tasks"][1]["kind"])
         self.assertEqual(
@@ -33,8 +35,10 @@ class PrepareExperimentTests(unittest.TestCase):
         )
 
     def test_checked_in_idempotency_contract_requires_http_409(self) -> None:
-        tasks_path = Path(__file__).parents[1] / "long-session" / "tasks.json"
-        tasks = json.loads(tasks_path.read_text(encoding="utf-8"))["tasks"]
+        tasks_path = Path(__file__).with_name("tasks.json")
+        catalog = json.loads(tasks_path.read_text(encoding="utf-8"))
+        self.assertEqual(2, catalog["schema_version"])
+        tasks = catalog["tasks"]
         task = next(item for item in tasks if item["id"] == "8.1")
         self.assertTrue(any("HTTP 409" in condition for condition in task["done_when"]))
 

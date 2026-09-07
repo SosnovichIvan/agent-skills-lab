@@ -1,3 +1,0 @@
-2026-09-03T10:57:23.611049Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)
-2026-09-03T10:58:07.391698Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
-2026-09-03T10:58:41.928895Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)

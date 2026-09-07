@@ -3,6 +3,14 @@
 Этот каталог задаёт обязательный протокол новых экспериментов качества для
 `execution-state`.
 
+Перед следующим полным запуском необходимо выполнить
+[задачи стабилизации и валидации](VALIDATION-TASKS.md). Незавершённый
+`quality-v5-gpt-5.6-luna-20260907` считается диагностическим запуском и не
+используется для сравнительной статистики.
+
+Последний принятый промежуточный результат:
+[GATE-3 model canary](../reports/gate3-canary-gpt-5.6-luna-20260907.md).
+
 ## Зафиксированное решение
 
 Начиная со следующей версии навыка новые эксперименты не создают варианты с
@@ -46,16 +54,23 @@ Preflight отклоняет незакоммиченный ref, повторн�
 control и candidate, а также формирует schema v2 task catalog с contracts,
 cohesion keys, external regression check IDs и финальным integration bridge.
 
+Единственный актуальный runner находится в `quality/run_benchmark.py`. Он
+принимает только standalone-варианты, task catalog schema v2 и worker protocols
+v2/v3 для сопоставления immutable control с candidate. Старый protocol v1 и
+OpenSpec/SDD-ветки в актуальном harness не поддерживаются.
+
 ## Метрики
 
 Главные метрики:
 
 - пройденные поведенческие контракты;
 - число дефектов и repair-turn;
-- total/input/output tokens;
+- total, uncached input, cached input, output и reasoning tokens;
 - model wall time и end-to-end time;
 - число fresh-context handoff;
+- expected/actual handoff, cold-start time и repair overhead;
 - размер state и worker packet;
+- context-map precision/coverage для контрольных chunks;
 - число и максимальный размер исходных файлов.
 
 Компиляция, `go vet`, `gofmt` и marker-проверки остаются preflight gate, но не
@@ -106,3 +121,17 @@ compile/static gate. Unit self-check запускается так:
 python3 -m unittest discover \
   -s benchmarks/go-auth-service/quality -p 'test_*.py' -v
 ```
+
+## Resume smoke без модели
+
+Перед model canary выполни локальную fault-injection проверку:
+
+```bash
+python3 benchmarks/go-auth-service/quality/resume_smoke.py \
+  --output /tmp/execution-state-resume-smoke
+```
+
+Smoke принудительно останавливает локальный fake worker, повторно читает
+сохранённые metrics, сохраняет завершённый prefix и запускает только прерванную
+задачу. Успешный отчёт содержит `model_requests: 0`, `resume_index: 1` и две
+завершённые fake-задачи. Это GATE-2; сетевой доступ и agent CLI не используются.
