@@ -828,7 +828,7 @@ def run_architecture_review(
             [
                 "architecture-review", "--id", state_id, "--project-root", str(project),
                 "--expected-revision", str(state["revision"]),
-                "--summary", truncate_utf8(answer, 1000),
+                "--summary", truncate_utf8(answer, 900),
                 "--evidence", "independent reviewer ran gofmt, go test and go vet",
             ],
         )

@@ -1,19 +1,19 @@
 {
-  "protocol_version": 4,
-  "name": "execution-state-current-vs-previous-standalone-quality",
+  "protocol_version": 5,
+  "name": "execution-state-language-and-review-fix-standalone-quality",
   "model": "gpt-5.6-luna",
   "reasoning_effort": "medium",
   "repeats": 3,
   "source": "standalone",
   "empty_project_per_variant": true,
   "fresh_initial_session": true,
-  "control_ref": "f80b4f8eba4c6641650b7d1a560d4b70a067a09d",
+  "control_ref": "66bc3c065c4276062bd0fa0684e31f8aeddfb7f6",
   "variants": [
     {
       "id": "control-skill-previous",
       "skill": true,
       "skill_ref": "control_ref",
-      "context_mode": "fresh-worker-per-chunk"
+      "context_mode": "adaptive-by-cohesion-key"
     },
     {
       "id": "candidate-skill-current",

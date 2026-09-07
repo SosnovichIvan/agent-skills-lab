@@ -59,8 +59,8 @@ Prompt templates и runtime adapter manifests не копируются в state
     "regression_checks": ["rate-limit-black-box", "error-envelope"],
     "requires_bridge": true
   },
-  "next_action": "Выполнить узкую проверку",
-  "observation": "Код изменён, проверка ещё не выполнена",
+  "next_action": "Run the targeted regression checks",
+  "observation": "Implementation changed; targeted checks are pending",
   "blocker": null,
   "artifacts": ["src/middleware/rate_limit.py"],
   "checkpoint": {
@@ -96,6 +96,37 @@ Prompt templates и runtime adapter manifests не копируются в state
 архитектурную проверку после N завершений. `pending_bridge` разрешает следующий
 packet только для задачи `kind=integration`. `next_handoff` — переносимая
 рекомендация `continue`, `reset` или `checkpoint`, а не vendor-команда.
+`architecture-review` принимает summary и evidence размером до 2 KiB каждое,
+но детерминированно сохраняет в `quality.last_review` не более 1 KiB. Полный
+review остаётся во внешнем артефакте или логе и не переносится между workers.
+
+## Язык сохраняемых данных
+
+Для компактного переносимого state используй следующую политику без добавления
+отдельных полей в schema:
+
+```text
+storage_language: en
+source_content_language: preserve
+```
+
+Краткий технический английский обязателен для текста, который coordinator или
+worker создаёт во время выполнения: `next_action`, `observation`, `blocker`,
+`checkpoint.reason`, summaries/evidence, check summaries,
+`quality.last_review`, а также `purpose` и другие описания context map.
+
+Дословный или нормативный текст сохраняй на языке источника. Это относится к
+импортированным `goal`, task title, `done_when`, constraints, contracts,
+invariants и source refs. Если такое поле coordinator формулирует сам, он может
+сразу записать его на английском; не переводи уже заданную формулировку ради
+единообразия. Идентификаторы, пути, symbols, команды и код не переводятся.
+
+`statectl` проверяет UTF-8 и byte limits, но намеренно не определяет язык:
+эвристика ошибалась бы на именах API, путях и смешанном нормативном тексте.
+Политику выполняют coordinator и worker. Не вводи ASCII-only validation —
+технический английский может законно содержать Unicode identifiers и цитаты.
+Когда явный `next_action` не передан, controller сам сохраняет компактное
+`Execute task <id>`, а не копирует потенциально длинный source title.
 
 ## Worker lease и revision
 
@@ -169,7 +200,7 @@ revision.
   --prompt <CONCRETE_WORKER_PROMPT> --packet worker-request.json
 
 <STATECTL> complete --id auth --project-root . --expected-revision 1 \
-  --run-id auth-worker-1 --summary "Chunk готов" \
+  --run-id auth-worker-1 --summary "Chunk complete" \
   --check-json '{"id":"token-black-box","status":"passed","summary":"pass"}'
 
 <STATECTL> context-map-update --id auth --project-root . \
@@ -177,8 +208,8 @@ revision.
   --entry-json '{"path":"internal/auth/token.go","purpose":"token lifecycle","areas":["auth"],"symbols":["Issuer","Validate"]}'
 
 <STATECTL> architecture-review --id auth --project-root . \
-  --expected-revision 2 --summary "Границы модулей сохранены" \
-  --evidence "dependency graph и wiring проверены"
+  --expected-revision 2 --summary "Module boundaries remain intact" \
+  --evidence "Dependency graph and wiring verified"
 
 <STATECTL> validate --id auth --project-root .
 ```

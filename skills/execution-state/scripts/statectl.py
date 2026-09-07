@@ -48,6 +48,9 @@ MAX_TASK_LEDGER_BYTES = 64 * 1024
 MAX_EVIDENCE_ITEM_BYTES = 1024
 MAX_EVIDENCE_BYTES = 4 * 1024
 MAX_STRING_BYTES = 4 * 1024
+MAX_REVIEW_INPUT_BYTES = 2 * 1024
+MAX_REVIEW_RECORD_BYTES = 1024
+MAX_REVIEW_EVIDENCE_RECORD_BYTES = 256
 STATE_STATUSES = {"planned", "in_progress", "blocked", "complete"}
 TASK_STATUSES = {"pending", "in_progress", "blocked", "complete"}
 SOURCE_KINDS = {"standalone", "openspec"}
@@ -102,6 +105,17 @@ def _emit(value: dict[str, Any]) -> None:
 
 def _byte_len(value: str) -> int:
     return len(value.encode("utf-8"))
+
+
+def _task_next_action(task: dict[str, Any]) -> str:
+    return f"Execute task {task['id']}"
+
+
+def _truncate_utf8(value: str, max_bytes: int) -> str:
+    encoded = value.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return value
+    return encoded[:max_bytes].decode("utf-8", errors="ignore").rstrip()
 
 
 def _require_text(
@@ -1333,7 +1347,7 @@ def command_init(args: argparse.Namespace) -> dict[str, Any]:
         _validate_task_ledger(ledger)
         source = {"kind": "standalone", "tasks_ref": "tasks.json"}
         active_task: dict[str, Any] | None = _active_from_task(tasks[0], "standalone")
-        next_action: str | None = tasks[0]["title"]
+        next_action: str | None = _task_next_action(tasks[0])
         status = "in_progress"
     else:
         if not args.change or not args.tasks_path:
@@ -1350,7 +1364,7 @@ def command_init(args: argparse.Namespace) -> dict[str, Any]:
         }
         pending = next((task for task in openspec_tasks if not task["complete"]), None)
         active_task = _active_from_task(pending, "openspec") if pending else None
-        next_action = pending["title"] if pending else None
+        next_action = _task_next_action(pending) if pending else None
         status = "in_progress" if pending else "complete"
 
     capabilities = dict(probe["selected"]["capabilities"])
@@ -1466,7 +1480,7 @@ def command_begin(args: argparse.Namespace) -> dict[str, Any]:
     state["next_action"] = (
         _require_text(args.next_action, "next_action", max_bytes=1024)
         if args.next_action
-        else task["title"]
+        else _task_next_action(task)
     )
     if not resumed:
         state["observation"] = ""
@@ -1704,7 +1718,7 @@ def _complete_with_authority_locked(
     else:
         state["status"] = "in_progress"
         state["active_task"] = _active_from_task(remaining, source_kind)
-        state["next_action"] = remaining["title"]
+        state["next_action"] = _task_next_action(remaining)
     quality = state["quality"]
     quality["completed_chunks"] += 1
     reasons: list[str] = []
@@ -1820,12 +1834,20 @@ def command_architecture_review(args: argparse.Namespace) -> dict[str, Any]:
     _expect_revision(current, args.expected_revision)
     if current.get("worker_lease") is not None:
         raise StateCtlError("cannot review architecture while a worker lease is active")
-    summary = _require_text(args.summary, "summary", max_bytes=1024)
-    evidence = _require_text(args.evidence, "evidence", max_bytes=1024)
+    summary = _require_text(args.summary, "summary", max_bytes=MAX_REVIEW_INPUT_BYTES)
+    evidence = _require_text(args.evidence, "evidence", max_bytes=MAX_REVIEW_INPUT_BYTES)
+    separator = "; evidence: "
+    compact_evidence = _truncate_utf8(evidence, MAX_REVIEW_EVIDENCE_RECORD_BYTES)
+    summary_budget = (
+        MAX_REVIEW_RECORD_BYTES
+        - _byte_len(separator)
+        - _byte_len(compact_evidence)
+    )
+    compact_summary = _truncate_utf8(summary, summary_budget)
     state = copy.deepcopy(current)
     state["quality"]["review_required"] = False
     state["quality"]["review_reasons"] = []
-    state["quality"]["last_review"] = f"{summary}; evidence: {evidence}"
+    state["quality"]["last_review"] = f"{compact_summary}{separator}{compact_evidence}"
     if state["quality"]["pending_bridge"]:
         state["quality"]["next_handoff"] = "checkpoint"
     _advance(state, checkpoint_ready=True, reason="architecture review recorded")

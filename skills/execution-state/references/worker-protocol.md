@@ -32,8 +32,8 @@ bounded semantic chunk, изменяет только разрешённые а�
     "contracts": ["HTTP 429 сохраняет error envelope"],
     "regression_checks": ["rate-limit-black-box", "error-envelope"]
   },
-  "next_action": "Реализовать middleware и выполнить проверки",
-  "last_observation": "Зависимый контракт уже реализован",
+  "next_action": "Implement middleware and run the declared checks",
+  "last_observation": "The dependent contract is already implemented",
   "quality": {
     "invariants": ["Публичный error envelope одинаков для всех handlers"],
     "next_handoff": "reset"
@@ -62,6 +62,11 @@ bounded semantic chunk, изменяет только разрешённые а�
 Packet не содержит transcript, завершённые задачи, скрытые рассуждения, полные
 логи и vendor/runtime metadata.
 
+Операционные поля packet (`next_action`, `last_observation`, context `purpose`)
+пишутся на кратком техническом английском. Нормативные поля, импортированные из
+запроса или task source (`goal`, title, `done_when`, constraints, contracts,
+invariants), сохраняют исходный язык и точную формулировку.
+
 ## Result
 
 ```json
@@ -71,7 +76,7 @@ Packet не содержит transcript, завершённые задачи, с
   "based_on_revision": 8,
   "task_id": "2.1",
   "status": "complete",
-  "summary": "Middleware реализован",
+  "summary": "Middleware implemented",
   "artifacts": [
     {"path": "src/middleware/rate_limit.py", "purpose": "Rate limiting"}
   ],
@@ -105,7 +110,7 @@ Coordinator проверяет protocol, lease, revision, task ID, изменё�
 ```text
 <STATECTL> complete --id add-rate-limit --project-root . \
   --expected-revision 8 --run-id generated-id \
-  --summary "Middleware реализован" \
+  --summary "Middleware implemented" \
   --check-json '{"id":"rate-limit-black-box","status":"passed","summary":"429 verified"}' \
   --check-json '{"id":"error-envelope","status":"passed","summary":"envelope unchanged"}'
 ```
@@ -113,6 +118,10 @@ Coordinator проверяет protocol, lease, revision, task ID, изменё�
 `context_updates` принимаются отдельными вызовами `context-map-update` после
 снятия lease. Для частичного результата используется `observe`, для
 проверенного блокера — `block`. Несовпадение lease/revision не меняет state.
+
+Worker возвращает созданные им `summary`, check summaries, artifact/context
+`purpose`, blockers и `next_action` на кратком техническом английском. Он не
+переводит цитируемые требования, identifiers, paths, symbols, команды и код.
 
 При невалидном envelope разрешена одна попытка восстановить только формат;
 затем создаётся recovery chunk или blocker. Один state допускает один активный

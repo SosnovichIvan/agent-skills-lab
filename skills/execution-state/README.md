@@ -156,6 +156,18 @@ coordinator определяет самостоятельно.
 `context-map-update` сохраняет только path/purpose/areas/symbols, а worker packet
 выбирает из карты максимум 16 релевантных записей.
 
+`architecture-review` принимает до 2 KiB summary и evidence, но сохраняет в
+state компактную UTF-8-запись не более 1 KiB. Поэтому подробный review не
+раздувает контекст последующих шагов; полный ответ остаётся в raw-артефакте.
+
+Изменяемые операционные записи хранятся на кратком техническом английском:
+наблюдения, summaries/evidence, blockers, причины checkpoint, review и описания
+context map. Дословные требования пользователя или OpenSpec остаются на языке
+источника, чтобы перевод не менял смысл acceptance criteria и контрактов.
+Helper ограничивает UTF-8-размер, но не пытается автоматически распознавать
+язык и не запрещает Unicode. Полная граница полей описана в
+[compact state schema](references/state-schema.md).
+
 Существующий незавершённый state schema v3 обновляется только явной командой
 `statectl migrate --expected-revision <N>`. Миграция повышает revision и
 отклоняется при активном worker lease, поэтому незаметного переписывания state

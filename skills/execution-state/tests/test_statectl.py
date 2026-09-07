@@ -225,6 +225,30 @@ class StateCtlTests(unittest.TestCase):
         self.assertEqual("complete", ledger["tasks"][0]["status"])
         self.assertEqual("in_progress", ledger["tasks"][1]["status"])
 
+    def test_generated_next_action_uses_english_id_not_source_title(self) -> None:
+        path = self.init_standalone(task_json=[
+            {"id": "one", "title": "Реализовать вход", "done_when": ["Готово"]},
+            {"id": "two", "title": "Проверить токен", "done_when": ["Готово"]},
+        ])
+        state = self.load_state(path)
+        self.assertEqual("Реализовать вход", state["active_task"]["title"])
+        self.assertEqual("Execute task one", state["next_action"])
+
+        code, result = self.run_cli(
+            "complete",
+            *self.state_arguments(),
+            "--expected-revision",
+            "0",
+            "--summary",
+            "Login implemented",
+            "--evidence",
+            "Targeted check passed",
+        )
+        self.assertEqual(0, code, result)
+        state = self.load_state(path)
+        self.assertEqual("Проверить токен", state["active_task"]["title"])
+        self.assertEqual("Execute task two", state["next_action"])
+
     def test_checkpoint_then_packet_contains_only_active_context(self) -> None:
         self.init_standalone()
         transitions = (
@@ -836,6 +860,36 @@ class StateCtlTests(unittest.TestCase):
         self.assertEqual(statectl.ERROR_INVALID, code)
         self.assertIn("integration chunk", result["message"])
         self.assertTrue(self.load_state(path)["quality"]["pending_bridge"])
+
+    def test_architecture_review_compacts_multibyte_summary_and_evidence(self) -> None:
+        path = self.init_standalone(task_json=[
+            {"id": "one", "title": "First", "done_when": ["done"]},
+            {"id": "two", "title": "Second", "done_when": ["done"]},
+            {"id": "three", "title": "Third", "done_when": ["done"]},
+        ])
+        for revision in (0, 1):
+            code, result = self.run_cli(
+                "complete", *self.state_arguments(),
+                "--expected-revision", str(revision),
+                "--summary", "done", "--evidence", "check passed",
+            )
+            self.assertEqual(0, code, result)
+        summary = "Проверены архитектурные границы. " * 30
+        evidence = "Проверены gofmt, go test и go vet. " * 20
+        self.assertLessEqual(len(summary.encode("utf-8")), statectl.MAX_REVIEW_INPUT_BYTES)
+        self.assertLessEqual(len(evidence.encode("utf-8")), statectl.MAX_REVIEW_INPUT_BYTES)
+        code, result = self.run_cli(
+            "architecture-review", *self.state_arguments(),
+            "--expected-revision", "2", "--summary", summary,
+            "--evidence", evidence,
+        )
+        self.assertEqual(0, code, result)
+        last_review = self.load_state(path)["quality"]["last_review"]
+        self.assertLessEqual(
+            len(last_review.encode("utf-8")),
+            statectl.MAX_REVIEW_RECORD_BYTES,
+        )
+        self.assertIn("; evidence: ", last_review)
 
     def test_handoff_recommends_reset_when_cohesion_changes_and_runtime_supports_it(self) -> None:
         path = self.init_standalone(task_json=[
