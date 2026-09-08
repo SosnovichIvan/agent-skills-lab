@@ -1,6 +1,5 @@
 interface:
   display_name: "Выполнение через состояние"
   short_description: "CLI-neutral state и смена контекста для долгих задач"
-  default_prompt: "Явно используй $execution-state как универсальный координатор и укажи CLI-native implementation profile по шаблону prompts/use-execution-state.md."
 policy:
   allow_implicit_invocation: false

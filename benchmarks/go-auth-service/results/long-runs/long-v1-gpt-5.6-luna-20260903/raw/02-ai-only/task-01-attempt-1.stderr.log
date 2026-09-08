@@ -1,5 +1,0 @@
-2026-09-03T08:41:08.870052Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T08:42:12.504456Z ERROR codex_core::tools::router: error=patch rejected: writing outside of the project; rejected by user approval settings
-2026-09-03T08:42:54.840735Z  WARN codex_sandboxing::violation: recorded sandbox violation: resource=filesystem backend=seatbelt reason=operation_not_permitted path=unknown
-2026-09-03T08:42:59.371916Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)
-2026-09-03T08:43:20.820375Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)

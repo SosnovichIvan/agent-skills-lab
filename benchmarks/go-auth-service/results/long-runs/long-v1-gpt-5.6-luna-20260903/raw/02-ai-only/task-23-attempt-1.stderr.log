@@ -1,9 +1,0 @@
-2026-09-03T09:07:49.078010Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit
-2026-09-03T09:07:54.078477Z  WARN codex_core_plugins::manager: failed to warm featured plugin ids cache error=failed to send remote featured plugin request to https://chatgpt.com/backend-api/plugins/featured?platform=codex: error sending request for url (https://chatgpt.com/backend-api/plugins/featured?platform=codex)
-2026-09-03T09:08:40.071312Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in /Users/ivansosnovich/Documents/codex/skils/benchmarks/go-auth-service/results/long-runs/long-v1-gpt-5.6-luna-20260903/projects/02-ai-only/internal/app/app.go:
-	Memberships    *repository.MembershipRepository
-2026-09-03T09:08:40.087859Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T09:08:47.791827Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T09:09:06.393568Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T09:09:39.541215Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T09:09:46.846056Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5

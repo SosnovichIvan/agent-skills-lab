@@ -8,8 +8,8 @@
 
 | Слой | Ответственность |
 | --- | --- |
-| Skill | Декомпозиция, границы semantic chunk, checkpoint policy |
-| `statectl` | State machine, revision/lease, OpenSpec overlay, packet и валидация |
+| Skill | Декомпозиция, contracts, границы chunk и checkpoint policy |
+| `statectl` | State machine, quality gates, context map, revision/lease и packet |
 | CLI-adapter | Только discovery, capabilities и безопасный launch plan |
 | Worker | Реализация одного chunk и структурированный результат |
 
@@ -44,8 +44,9 @@ Runtime сообщает только подтверждённые возмож�
 ## Lifecycle одного chunk
 
 ```text
-probe runtime → choose strategy → begin chunk → implement and verify
-→ update state once → checkpoint → packet/lease → bound runtime-plan
+probe runtime → choose strategy → begin chunk → implement and verify contracts
+→ update context map/state → architecture/bridge gate → checkpoint
+→ packet/lease → bound runtime-plan
 → compact/fresh/manual → accept result/release lease
 ```
 
@@ -55,14 +56,17 @@ agent turns. Закончи его раньше при блокере, запр�
 подсистемы или превышении установленного бюджета.
 
 Reset выгоден, когда ожидаемая повторная передача одноразовой истории больше
-cold start и rehydration packet. `statectl route` использует подтверждённые
-capabilities и оценку работы; порог затем калибруется benchmark-метриками.
+cold start и rehydration packet. Для соседних chunks с одним `cohesion_key`
+используй `continue`; при смене ключа — `reset`, если capability подтверждена;
+иначе `checkpoint`. Это решение хранится как vendor-neutral рекомендация, а
+конкретный adapter выбирает доступный механизм.
 
 ## Передача
 
 До смены контекста controller обязан:
 
-1. принять только проверяемые факты и evidence;
+1. принять только проверяемые факты и structured checks для всех объявленных
+   regression contracts;
 2. сохранить валидный checkpoint с одним `next_action`;
 3. записать worker packet через `statectl packet`, передав
    `--expected-revision`, `--run-id` и `--output`; операция повышает revision и
@@ -73,6 +77,23 @@ capabilities и оценку работы; порог затем калибру�
    параметры;
 6. не передавать предыдущие сообщения, рассуждения и полные логи.
 
+Checkpoint считается reset-ready только когда state валиден и укладывается в
+лимит, `next_action` задаёт одно действие, изменённые artifacts перечислены,
+объявленные regression checks имеют structured status `passed`, а observation
+содержит факт вместо сырого лога. При blocker запиши недостающий ввод и один
+способ продолжения. Не создавай checkpoint посреди миграции, интерактивной
+операции или непроверенного изменения.
+
+Выбирай `continue` для соседнего chunk с тем же `cohesion_key` и ещё полезным
+локальным context; `reset` — при смене ключа и подтверждённой reset capability;
+`checkpoint` — для manual handoff или lite. Resume/fork не считаются reset,
+если переносят предыдущую историю.
+
+Перед packet controller запрещает пропуск обязательного architecture review и
+запрещает обычный implementation chunk, пока cross-area изменение ожидает
+`kind=integration`. Релевантные записи context map выбираются по areas и
+рабочим путям; весь индекс и содержимое файлов в packet не копируются.
+
 Worker возвращает result envelope с `run_id` и `based_on_revision`. Controller
 требует, чтобы они совпали с lease и post-packet revision, проверяет изменённые
 артефакты и `done_when`, после чего вызывает `observe`, `complete` или `block` с
@@ -80,6 +101,10 @@ Worker возвращает result envelope с `run_id` и `based_on_revision`. 
 обновляет state; только `complete` обновляет OpenSpec checkbox. Невалидный
 envelope не завершает задачу; допускается максимум одна попытка восстановить
 формат.
+
+После ответа worker lease снимается только через revision-bound `observe`,
+`complete` или `block`. Не бросай state с активным lease и не создавай
+заменяющий packet.
 
 ## Безопасность
 

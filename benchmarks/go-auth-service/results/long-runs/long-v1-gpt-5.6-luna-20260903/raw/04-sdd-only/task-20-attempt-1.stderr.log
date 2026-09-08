@@ -1,8 +1,0 @@
-2026-09-03T11:21:56.492574Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in /Users/ivansosnovich/Documents/codex/skils/benchmarks/go-auth-service/results/long-runs/long-v1-gpt-5.6-luna-20260903/projects/04-sdd-only/internal/app/app.go:
-	AccessToken *security.AccessTokenService
-2026-09-03T11:21:56.509248Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:22:02.057987Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:22:16.813357Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:22:28.429381Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:22:35.094199Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:22:40.700836Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5

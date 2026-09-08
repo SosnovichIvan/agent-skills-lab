@@ -1,5 +1,0 @@
-2026-09-03T11:07:09.344667Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:07:14.342187Z ERROR codex_models_manager::manager: failed to refresh available models: timeout waiting for child process to exit
-2026-09-03T11:07:57.510098Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:08:04.939092Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
-2026-09-03T11:08:10.469127Z ERROR codex_models_manager::manager: failed to renew cache TTL: missing field `supports_parallel_tool_calls` at line 93 column 5
