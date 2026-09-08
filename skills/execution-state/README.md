@@ -4,9 +4,10 @@
 компактное проверяемое состояние между semantic chunks и может передавать
 работу в новый context без transcript.
 
-Текущий prerelease: `0.5.0-rc.1`. Канонические версии runtime contracts
-хранятся в `release.json` и доступны через `statectl version`. Stable tag будет
-создан только после прохождения обязательных validation gates.
+Текущий финальный release candidate: `0.5.0-rc.2`. Канонические версии runtime
+contracts хранятся в `release.json` и доступны через `statectl version`.
+Runtime, schema и worker protocol зафиксированы; до полного GATE-5 версия не
+публикуется как stable `0.5.0`.
 
 Текущая версия schema v4 добавляет quality contracts: глобальные инварианты,
 именованные regression checks, компактную context map, integration bridge,
@@ -191,7 +192,7 @@ permissions или другие внешние действия.
 - [OpenSpec-lite](references/openspec-integration.md);
 - [worker protocol](references/worker-protocol.md).
 
-## Новая методика экспериментов
+## Проверенный результат
 
 Все следующие эксперименты выполняются только без SDD/OpenSpec: предыдущая
 версия skill как control, новая версия как candidate и обычный AI как baseline.
@@ -201,11 +202,8 @@ permissions или другие внешние действия.
 с эффектом execution state. Полный зафиксированный протокол:
 [standalone quality benchmark](../../benchmarks/go-auth-service/quality/README.md).
 
-Новый внешний black-box verifier проверяет request ID, безопасный idempotent
-replay, конфликт изменённого body, создание и назначение custom role. На старых
-long-session артефактах он ожидаемо выявляет ранее пропущенные defects, поэтому
-старый `Final gate: Да` следует читать только как compile/static gate, а не как
-доказательство функциональной корректности.
+Внешний black-box verifier проверяет request ID, безопасный idempotent replay,
+конфликт изменённого body, создание и назначение custom role.
 
 Первое валидное сокращённое сравнение на 16 задачах показало для candidate
 снижение total tokens на 73.88%, output tokens на 59.60% и uncached input на
@@ -213,5 +211,5 @@ long-session артефактах он ожидаемо выявляет ран�
 bootstrap, architecture reviews и recovery. Это один промежуточный прогон, а
 не итоговая статистика релиза; подробности, ограничения и checksums приведены в
 [отчёте GATE-4](../../benchmarks/go-auth-service/reports/gate4-short-gpt-5.6-luna-20260907.md).
-Исторические измерения сохранены в
-[отдельном отчёте](../../benchmarks/go-auth-service/reports/legacy-benchmarks.md).
+`0.5.0-rc.2` меняет только документацию и release metadata относительно
+проверенного runtime candidate; исполняемые helpers и contracts не изменены.

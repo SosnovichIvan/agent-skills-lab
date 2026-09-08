@@ -3,10 +3,8 @@
 Этот каталог задаёт обязательный протокол новых экспериментов качества для
 `execution-state`.
 
-Перед следующим полным запуском необходимо выполнить
-[задачи стабилизации и валидации](VALIDATION-TASKS.md). Незавершённый
-`quality-v5-gpt-5.6-luna-20260907` считается диагностическим запуском и не
-используется для сравнительной статистики.
+Перед полным запуском необходимо выполнить
+[задачи стабилизации и валидации](VALIDATION-TASKS.md).
 
 Последний принятый промежуточный результат:
 [GATE-4 shortened comparison](../reports/gate4-short-gpt-5.6-luna-20260907.md).
@@ -46,7 +44,7 @@ OpenSpec остаётся поддерживаемым источником за
 
 ```bash
 python3 benchmarks/go-auth-service/quality/prepare_experiment.py \
-  --candidate-ref <FULL_COMMIT_SHA> --run-id quality-v1-<DATE>
+  --candidate-ref <FULL_COMMIT_SHA> --run-id quality-<DATE>
 ```
 
 Preflight отклоняет незакоммиченный ref, повторное использование run ID и любое
@@ -79,8 +77,7 @@ OpenSpec/SDD-ветки в актуальном harness не поддержив�
 
 ## Первый набор обязательных контрактов
 
-Verifier должен как минимум обнаруживать дефекты, найденные в предыдущем
-long-session запуске:
+Verifier считает обязательными следующие поведенческие контракты:
 
 - `POST /v1/organizations/{orgID}/roles` существует и создаёт custom role;
 - созданную роль можно назначить участнику той же организации;
@@ -89,11 +86,10 @@ long-session запуске:
 - тот же idempotency key с другим body возвращает HTTP `409 Conflict`, а не
   replay или иной статус.
 
-Команда запуска verifier и формат машинного отчёта будут находиться в этом
-каталоге. Отчёт каждого запуска сохраняется рядом с новыми immutable raw
-результатами.
+Команда запуска verifier и формат машинного отчёта находятся в этом каталоге.
+Raw-результаты остаются вне Git; публикуется только последний curated report.
 
-## Проверка verifier на старых артефактах
+## Проверка verifier
 
 Команда:
 
@@ -102,20 +98,7 @@ python3 benchmarks/go-auth-service/quality/verify_behavior.py \
   --project <GENERATED_PROJECT> --output <REPORT.json>
 ```
 
-Verifier был проверен на сохранённых standalone-проектах запуска
-`long-v1-gpt-5.6-luna-20260903`:
-
-| Контракт | Старый skill-run | Старый AI-only |
-| --- | ---: | ---: |
-| Request ID header = error body | pass | fail |
-| Одинаковый idempotent request replay | fail | pass |
-| Изменённый body с тем же key → conflict | fail | fail |
-| Создание custom role | pass | fail |
-| Назначение custom role | pass | fail |
-
-Оба проекта собираются, но полный behavioral gate не проходит ни один. Это
-подтверждает, что verifier ловит известные дефекты, пропущенные прежним
-compile/static gate. Unit self-check запускается так:
+Unit self-check запускается так:
 
 ```bash
 python3 -m unittest discover \

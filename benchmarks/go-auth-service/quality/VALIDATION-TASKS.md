@@ -1,8 +1,6 @@
 # Задачи стабилизации и валидации эксперимента
 
 Этот backlog должен быть выполнен до следующего полного запуска `3 × 3 × 32`.
-`quality-v5-gpt-5.6-luna-20260907` сохраняется как диагностический артефакт и
-не используется для сравнительных выводов.
 
 Статусы:
 
@@ -209,10 +207,9 @@
   generated artifacts.
 
 - [x] **VAL-032 — Отделить продуктовый README от истории исследований.**
-  Перенести отчёты v2/v3, старый long-session анализ и ссылки на устаревшие
-  prompts/harness в `benchmarks/go-auth-service/reports/`. В README skill
-  оставить установку, текущие contracts, ограничения и ссылку на последний
-  валидный report.
+  В README skill оставить установку, текущие contracts, ограничения и ссылку
+  только на последний валидный сравнительный report. Старые исследования
+  доступны через Git history, но не публикуются рядом с текущей статистикой.
   Проверка: README не приписывает старую статистику текущей версии и не содержит
   broken links.
 
@@ -225,13 +222,12 @@
   repository search находит старые версии только в архивном report или Git
   history.
 
-- [x] **VAL-034 — Архивировать и убрать raw benchmark artifacts из Git.**
-  До удаления сохранить диагностические runs во внешнем архиве с checksum.
-  В репозитории оставить только curated reports, агрегированные metrics,
-  manifests и минимальные regression fixtures; generated `quality-runs/`
-  добавить в `.gitignore`.
+- [x] **VAL-034 — Убрать raw benchmark artifacts из Git.**
+  В репозитории оставить только последний curated report и минимальные
+  regression fixtures; generated `quality-runs/` хранить вне Git. Предыдущие
+  отчёты и агрегаты доступны через Git history.
   Проверка: raw JSONL, stderr, worker packets и generated projects не tracked,
-  а опубликованные отчёты всё ещё проверяются по manifest/hash.
+  а опубликованный отчёт содержит hashes локальных исходных агрегатов.
 
 - [x] **VAL-035 — Добавить единый release manifest.**
   Создать машинно-читаемый источник версии скила, state/task schemas, worker

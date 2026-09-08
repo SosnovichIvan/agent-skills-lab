@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an immutable standalone-only experiment plan and v4 task catalog."""
+"""Create an immutable standalone-only experiment plan and schema-v2 task catalog."""
 
 from __future__ import annotations
 
@@ -168,7 +168,7 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--candidate-ref", required=True)
-    parser.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("quality-v1-%Y%m%dT%H%M%SZ"))
+    parser.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("quality-%Y%m%dT%H%M%SZ"))
     parser.add_argument("--output-root", type=Path, default=Path("benchmarks/go-auth-service/results/quality-runs"))
     args = parser.parse_args()
     try:
