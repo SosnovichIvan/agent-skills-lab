@@ -1,4 +1,4 @@
-# Worker protocol v3
+# Worker protocol 1.0.0
 
 Coordinator — единственный писатель state и task ledger. Worker получает один
 bounded semantic chunk, изменяет только разрешённые артефакты и возвращает
@@ -8,8 +8,8 @@ bounded semantic chunk, изменяет только разрешённые а�
 
 ```json
 {
-  "protocol": "execution-state.worker/v3",
-  "packet_version": 3,
+  "protocol": "execution-state.worker/1.0.0",
+  "packet_version": "1.0.0",
   "run_id": "generated-id",
   "state_id": "add-rate-limit",
   "based_on_revision": 8,
@@ -76,7 +76,7 @@ Packet не содержит transcript, завершённые задачи, с
 
 ```json
 {
-  "protocol": "execution-state.result/v3",
+  "protocol": "execution-state.result/1.0.0",
   "run_id": "generated-id",
   "based_on_revision": 8,
   "task_id": "2.1",
@@ -101,9 +101,9 @@ Packet не содержит transcript, завершённые задачи, с
 последний ответ содержит один JSON между маркерами:
 
 ```text
----EXECUTION_STATE_RESULT_V3---
+---EXECUTION_STATE_RESULT_1_0_0---
 {...}
----END_EXECUTION_STATE_RESULT_V3---
+---END_EXECUTION_STATE_RESULT_1_0_0---
 ```
 
 ## Приём

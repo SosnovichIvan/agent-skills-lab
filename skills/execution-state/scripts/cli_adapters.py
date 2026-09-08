@@ -19,7 +19,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = "1.0.0"
+STDIN_PROTOCOL = "execution-state.stdin/1.0.0"
 CAPABILITY_KEYS = {
     "fresh_context",
     "in_place_compaction",
@@ -490,20 +491,20 @@ def build_runtime_plan(
         "cwd": str(root),
         "stdin_files": stdin_files,
         "stdin": {
-            "protocol": "execution-state.stdin/v1",
+            "protocol": STDIN_PROTOCOL,
             "encoding": "utf-8",
             "parts": [
                 {
                     "name": "worker_prompt",
                     "path": stdin_files[0],
-                    "begin": "---EXECUTION_STATE_WORKER_PROMPT_V1---",
-                    "end": "---END_EXECUTION_STATE_WORKER_PROMPT_V1---",
+                    "begin": "---EXECUTION_STATE_WORKER_PROMPT_1_0_0---",
+                    "end": "---END_EXECUTION_STATE_WORKER_PROMPT_1_0_0---",
                 },
                 {
                     "name": "worker_packet",
                     "path": stdin_files[1],
-                    "begin": "---EXECUTION_STATE_WORKER_PACKET_V1---",
-                    "end": "---END_EXECUTION_STATE_WORKER_PACKET_V1---",
+                    "begin": "---EXECUTION_STATE_WORKER_PACKET_1_0_0---",
+                    "end": "---END_EXECUTION_STATE_WORKER_PACKET_1_0_0---",
                 },
             ],
             "line_separator": "LF",

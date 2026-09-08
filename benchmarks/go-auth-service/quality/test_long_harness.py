@@ -37,7 +37,7 @@ class LongHarnessTests(unittest.TestCase):
                 for index in range(32)
             ]
             path.write_text(
-                json.dumps({"schema_version": 2, "tasks": tasks}),
+                json.dumps({"schema_version": "1.0.0", "tasks": tasks}),
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(RuntimeError, "discovery_required"):
@@ -282,7 +282,7 @@ class LongHarnessTests(unittest.TestCase):
         )
 
     def test_worker_result_protocol_tracks_request_protocol(self) -> None:
-        for request_version, result_version in (("v2", "v2"), ("v3", "v3")):
+        for request_version, result_version in (("1.0.0", "1.0.0"),):
             packet = {
                 "protocol": f"execution-state.worker/{request_version}",
                 "run_id": "run-1",
@@ -301,14 +301,14 @@ class LongHarnessTests(unittest.TestCase):
 
         matches, message = runner.worker_result_matches(
             {
-                "protocol": "execution-state.result/v1",
+                "protocol": "execution-state.result/unsupported",
                 "run_id": "run-1",
                 "based_on_revision": 4,
                 "task_id": "1.1",
                 "status": "complete",
             },
             {
-                "protocol": "execution-state.worker/v1",
+                "protocol": "execution-state.worker/unsupported",
                 "run_id": "run-1",
                 "based_on_revision": 4,
                 "task": {"id": "1.1"},

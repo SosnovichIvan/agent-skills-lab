@@ -24,7 +24,7 @@ class PrepareExperimentTests(unittest.TestCase):
             {"id": "8.4", "title": "Final wiring", "done_when": ["service works"]},
         ]
         catalog = prepare_experiment.enrich_tasks(tasks)
-        self.assertEqual(2, catalog["schema_version"])
+        self.assertEqual("1.0.0", catalog["schema_version"])
         self.assertTrue(catalog["context_policy"]["discovery_required"])
         self.assertTrue(catalog["context_policy"]["reason"])
         self.assertTrue(catalog["tasks"][0]["requires_bridge"])
@@ -37,7 +37,7 @@ class PrepareExperimentTests(unittest.TestCase):
     def test_checked_in_idempotency_contract_requires_http_409(self) -> None:
         tasks_path = Path(__file__).with_name("tasks.json")
         catalog = json.loads(tasks_path.read_text(encoding="utf-8"))
-        self.assertEqual(2, catalog["schema_version"])
+        self.assertEqual("1.0.0", catalog["schema_version"])
         tasks = catalog["tasks"]
         task = next(item for item in tasks if item["id"] == "8.1")
         self.assertTrue(any("HTTP 409" in condition for condition in task["done_when"]))
@@ -50,40 +50,30 @@ class PrepareExperimentTests(unittest.TestCase):
         self.assertTrue(all("sdd" not in item["id"].lower() for item in profile["variants"]))
         self.assertTrue(all("openspec" not in item["id"].lower() for item in profile["variants"]))
 
-    def test_prepare_requires_committed_candidate_sha(self) -> None:
+    def test_prepare_requires_committed_skill_sha(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaisesRegex(ValueError, "committed Git SHA"):
                 prepare_experiment.prepare(Path(temporary), "run-1", "WORKTREE")
 
     def test_prepare_writes_immutable_manifest_and_catalog(self) -> None:
         repo_root = Path(__file__).resolve().parents[3]
-        candidate = subprocess.run(
+        skill_ref = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True,
             capture_output=True, check=True,
         ).stdout.strip()
         with tempfile.TemporaryDirectory() as temporary:
             output = prepare_experiment.prepare(
-                Path(temporary), "run-1", candidate
+                Path(temporary), "run-1", skill_ref
             )
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
             catalog = json.loads((output / "tasks.json").read_text(encoding="utf-8"))
             self.assertEqual("prepared", manifest["status"])
-            self.assertEqual(candidate, manifest["candidate_ref"])
-            self.assertTrue(manifest["control_snapshot_sha256"])
-            self.assertTrue(manifest["candidate_snapshot_sha256"])
-            self.assertTrue((output / "inputs/control/skills/execution-state/SKILL.md").is_file())
-            self.assertTrue((output / "inputs/candidate/skills/execution-state/SKILL.md").is_file())
+            self.assertEqual(skill_ref, manifest["skill_ref"])
+            self.assertTrue(manifest["skill_snapshot_sha256"])
+            self.assertTrue((output / "inputs/skill/skills/execution-state/SKILL.md").is_file())
             self.assertEqual(32, len(catalog["tasks"]))
             with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
-                prepare_experiment.prepare(Path(temporary), "run-1", candidate)
-
-    def test_prepare_rejects_control_as_candidate(self) -> None:
-        profile = json.loads(Path(__file__).with_name("experiment.json").read_text(encoding="utf-8"))
-        with tempfile.TemporaryDirectory() as temporary:
-            with self.assertRaisesRegex(ValueError, "differ from control_ref"):
-                prepare_experiment.prepare(
-                    Path(temporary), "run-1", profile["control_ref"]
-                )
+                prepare_experiment.prepare(Path(temporary), "run-1", skill_ref)
 
 
 if __name__ == "__main__":

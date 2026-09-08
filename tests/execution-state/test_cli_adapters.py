@@ -25,7 +25,7 @@ class CliAdapterTests(unittest.TestCase):
         self.prompt = self.root / "worker prompt.md"
         self.packet = self.root / "packet.json"
         self.prompt.write_text("worker instructions", encoding="utf-8")
-        self.packet.write_text('{"packet_version":1}', encoding="utf-8")
+        self.packet.write_text('{"packet_version":"1.0.0"}', encoding="utf-8")
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -81,7 +81,7 @@ class CliAdapterTests(unittest.TestCase):
         self.assertFalse(plan["executes"])
         self.assertFalse(marker.exists())
         self.assertNotIn("shell", plan)
-        self.assertEqual("execution-state.stdin/v1", plan["stdin"]["protocol"])
+        self.assertEqual("execution-state.stdin/1.0.0", plan["stdin"]["protocol"])
         self.assertEqual(
             ["worker_prompt", "worker_packet"],
             [part["name"] for part in plan["stdin"]["parts"]],
@@ -175,7 +175,7 @@ class CliAdapterTests(unittest.TestCase):
         manifest_path.write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": "1.0.0",
                     "id": "custom-agent",
                     "executables": [str(custom_exec)],
                     "capabilities": {
@@ -220,7 +220,7 @@ class CliAdapterTests(unittest.TestCase):
         manifest_path.write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": "1.0.0",
                     "id": "custom-agent",
                     "executables": [str(executable)],
                     "capabilities": {
@@ -261,7 +261,7 @@ class CliAdapterTests(unittest.TestCase):
         manifest_path.write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": "1.0.0",
                     "id": "custom-agent",
                     "executables": ["custom-agent"],
                     "capabilities": {
@@ -295,7 +295,7 @@ class CliAdapterTests(unittest.TestCase):
             manifest_path.write_text(
                 json.dumps(
                     {
-                        "schema_version": 1,
+                        "schema_version": "1.0.0",
                         "id": f"custom-{index}",
                         "executables": ["custom-agent"],
                         "capabilities": {
@@ -323,7 +323,7 @@ class CliAdapterTests(unittest.TestCase):
         manifest_path.write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": "1.0.0",
                     "id": "custom-partial",
                     "executables": ["custom-agent"],
                     "capabilities": {
@@ -350,7 +350,7 @@ class CliAdapterTests(unittest.TestCase):
         manifest_path.write_text(
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": "1.0.0",
                     "id": "shell-adapter",
                     "executables": ["bash"],
                     "capabilities": {

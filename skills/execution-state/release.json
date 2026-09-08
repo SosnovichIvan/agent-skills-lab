@@ -1,10 +1,14 @@
 {
   "name": "execution-state",
-  "version": "0.5.0-rc.2",
-  "state_schema": 4,
-  "task_ledger_schema": 2,
-  "worker_protocol": "execution-state.worker/v3",
-  "packet_version": 3,
-  "adapter_manifest_schema": 1,
+  "version": "1.0.0",
+  "state_schema": "1.0.0",
+  "task_ledger_schema": "1.0.0",
+  "context_map_schema": "1.0.0",
+  "worker_protocol": "execution-state.worker/1.0.0",
+  "result_protocol": "execution-state.result/1.0.0",
+  "review_protocol": "execution-state.review/1.0.0",
+  "stdin_protocol": "execution-state.stdin/1.0.0",
+  "packet_version": "1.0.0",
+  "adapter_manifest_schema": "1.0.0",
   "minimum_python": "3.9"
 }

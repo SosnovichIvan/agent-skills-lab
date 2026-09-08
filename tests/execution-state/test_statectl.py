@@ -167,7 +167,7 @@ class StateCtlTests(unittest.TestCase):
     def test_opaque_implementation_ref_and_compact_state(self) -> None:
         path = self.init_standalone()
         state = self.load_state(path)
-        self.assertEqual(4, state["schema_version"])
+        self.assertEqual("1.0.0", state["schema_version"])
         self.assertEqual("/backend-implementation", state["implementation_ref"])
         self.assertLessEqual(path.stat().st_size, statectl.MAX_STATE_BYTES)
         self.assertEqual(1, len(path.read_text(encoding="utf-8").splitlines()))
@@ -249,8 +249,8 @@ class StateCtlTests(unittest.TestCase):
         self.assertNotIn("last_result", packet)
         self.assertNotIn("history", packet)
         self.assertNotIn("active_task", packet)
-        self.assertEqual("execution-state.worker/v3", packet["protocol"])
-        self.assertEqual(3, packet["packet_version"])
+        self.assertEqual("execution-state.worker/1.0.0", packet["protocol"])
+        self.assertEqual("1.0.0", packet["packet_version"])
         self.assertNotIn("revision", packet)
         self.assertEqual(
             {"operational": "en", "source_content": "preserve"},
@@ -324,7 +324,7 @@ class StateCtlTests(unittest.TestCase):
         )
         self.assertEqual(0, code, result)
         packet = json.loads(packet_path.read_text(encoding="utf-8"))
-        self.assertEqual("execution-state.worker/v3", packet["protocol"])
+        self.assertEqual("execution-state.worker/1.0.0", packet["protocol"])
         self.assertTrue(packet["run_id"])
         self.assertEqual(3, packet["based_on_revision"])
         self.assertEqual("задача-1", packet["task"]["id"])
@@ -373,7 +373,7 @@ class StateCtlTests(unittest.TestCase):
         self.assertEqual(statectl.ERROR_INVALID, code)
         self.assertIn("goal", result["message"])
 
-    def test_runtime_plan_rejects_noncanonical_worker_v3_fields(self) -> None:
+    def test_runtime_plan_rejects_noncanonical_worker_fields(self) -> None:
         self.init_standalone()
         packet_path = self.root / "packet.json"
         code, result = self.run_cli(

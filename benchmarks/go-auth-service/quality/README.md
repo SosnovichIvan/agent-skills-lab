@@ -1,23 +1,16 @@
 # Quality benchmark: standalone only
 
-Этот каталог задаёт обязательный протокол новых экспериментов качества для
-`execution-state`.
-
-Перед полным запуском необходимо выполнить
-[задачи стабилизации и валидации](VALIDATION-TASKS.md).
-
-Последний принятый промежуточный результат:
-[GATE-4 shortened comparison](../reports/gate4-short-gpt-5.6-luna-20260907.md).
+Этот каталог содержит актуальный standalone-сценарий проверки
+`execution-state 1.0.0`. Исторические прогоны и межверсионные control snapshots
+не хранятся.
 
 ## Зафиксированное решение
 
-Начиная со следующей версии навыка новые эксперименты не создают варианты с
-OpenSpec/SDD. Сравниваются только независимые проекты, которые стартуют из
-пустого каталога и из новой model session:
+Эксперимент создаёт только независимые проекты, которые стартуют из пустого
+каталога и новой model session:
 
-1. зафиксированная предыдущая версия `execution-state` (control);
-2. разрабатываемая версия `execution-state` (candidate);
-3. обычный AI без `execution-state` (baseline).
+1. `execution-state 1.0.0` из указанного Git commit;
+2. обычный AI без `execution-state`.
 
 OpenSpec остаётся поддерживаемым источником задач самого навыка, но больше не
 является измеряемой переменной. Это уменьшает число вариантов, стоимость
@@ -30,32 +23,31 @@ OpenSpec остаётся поддерживаемым источником за
 - одинаковые требования, порядок semantic chunks и permissions;
 - новый пустой проект и новая сессия для каждого варианта;
 - минимум три повтора с чередованием порядка вариантов;
-- control привязывается к Git commit, candidate — к проверяемому commit;
+- skill привязывается к полному Git commit SHA;
 - verifier хранится вне генерируемого проекта и не передаётся worker-агенту.
 - неуспех одного варианта фиксируется в metrics, но не останавливает остальные
   варианты и повторы эксперимента.
 
 Изменение модели, reasoning effort, задания или verifier создаёт новый профиль
-эксперимента и требует отдельного review. Старые raw-результаты не
-перезаписываются.
+эксперимента и требует отдельного review. Результаты по умолчанию остаются
+локальными и не коммитятся.
 
-Профиль хранится в `experiment.json`. После commit candidate создай immutable
-план запуска:
+Профиль хранится в `experiment.json`. После commit версии skill создай
+immutable план запуска:
 
 ```bash
 python3 benchmarks/go-auth-service/quality/prepare_experiment.py \
-  --candidate-ref <FULL_COMMIT_SHA> --run-id quality-<DATE>
+  --skill-ref <FULL_COMMIT_SHA> --run-id quality-<DATE>
 ```
 
 Preflight отклоняет незакоммиченный ref, повторное использование run ID и любое
-появление SDD/OpenSpec-варианта. Он сохраняет отдельные immutable Git-снимки
-control и candidate, а также формирует schema v2 task catalog с contracts,
-cohesion keys, external regression check IDs и финальным integration bridge.
+появление SDD/OpenSpec-варианта. Он сохраняет immutable Git-снимок skill и
+формирует task catalog schema `1.0.0` с contracts, cohesion keys, external
+regression check IDs и финальным integration bridge.
 
-Единственный актуальный runner находится в `quality/run_benchmark.py`. Он
-принимает только standalone-варианты, task catalog schema v2 и worker protocols
-v2/v3 для сопоставления immutable control с candidate. Старый protocol v1 и
-OpenSpec/SDD-ветки в актуальном harness не поддерживаются.
+Runner находится в `quality/run_benchmark.py`. Он принимает только
+standalone-варианты, task catalog schema `1.0.0` и worker protocol `1.0.0`.
+Старые версии protocol и OpenSpec/SDD-ветки не поддерживаются.
 
 ## Метрики
 
@@ -87,7 +79,7 @@ Verifier считает обязательными следующие повед
   replay или иной статус.
 
 Команда запуска verifier и формат машинного отчёта находятся в этом каталоге.
-Raw-результаты остаются вне Git; публикуется только последний curated report.
+Raw-результаты и отчёты остаются вне Git.
 
 ## Проверка verifier
 
@@ -117,4 +109,4 @@ python3 benchmarks/go-auth-service/quality/resume_smoke.py \
 Smoke принудительно останавливает локальный fake worker, повторно читает
 сохранённые metrics, сохраняет завершённый prefix и запускает только прерванную
 задачу. Успешный отчёт содержит `model_requests: 0`, `resume_index: 1` и две
-завершённые fake-задачи. Это GATE-2; сетевой доступ и agent CLI не используются.
+завершённые fake-задачи. Сетевой доступ и agent CLI не используются.

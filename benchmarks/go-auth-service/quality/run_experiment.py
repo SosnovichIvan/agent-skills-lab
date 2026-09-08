@@ -15,8 +15,7 @@ from typing import Any
 from runner_state import atomic_save_json, mark_stale_interrupted, validate_run_state
 
 VARIANT_CONFIG = {
-    "control-skill-previous": ("01-skill-standalone", "control", "v2"),
-    "candidate-skill-current": ("01-skill-standalone", "candidate", "v3"),
+    "execution-state-1.0.0": ("01-skill-standalone", "skill", "stable"),
     "ai-only": ("02-ai-only", "none", "none"),
 }
 
@@ -78,8 +77,7 @@ def write_validity_report(experiment: Path, manifest: dict[str, Any]) -> Path:
         for variant_id in order:
             runner_variant, _, _ = VARIANT_CONFIG[variant_id]
             short = {
-                "control-skill-previous": "control",
-                "candidate-skill-current": "candidate",
+                "execution-state-1.0.0": "skill",
                 "ai-only": "ai",
             }[variant_id]
             run_id = f"repeat-{repeat:02d}-{short}"
@@ -127,7 +125,7 @@ def main() -> int:
     if manifest.get("protocol_version") != 5:
         raise RuntimeError("experiment protocol_version must equal 5")
     if manifest.get("model") != "gpt-5.6-luna" or manifest.get("reasoning_effort") != "medium":
-        raise RuntimeError("experiment model profile is not the fixed control profile")
+        raise RuntimeError("experiment model profile is not the fixed benchmark profile")
 
     repo = Path(__file__).resolve().parents[3]
     runner = repo / "benchmarks" / "go-auth-service" / "quality" / "run_benchmark.py"
@@ -135,12 +133,10 @@ def main() -> int:
     output_root = experiment / "runs"
     behavior = repo / "benchmarks" / "go-auth-service" / "quality" / "verify_behavior.py"
     schemas = {
-        "v2": repo / "benchmarks" / "go-auth-service" / "quality" / "worker-result-v2.schema.json",
-        "v3": repo / "benchmarks" / "go-auth-service" / "quality" / "worker-result.schema.json",
+        "stable": repo / "benchmarks" / "go-auth-service" / "quality" / "worker-result.schema.json",
     }
     skills = {
-        "control": experiment / "inputs" / "control" / "skills" / "execution-state",
-        "candidate": experiment / "inputs" / "candidate" / "skills" / "execution-state",
+        "skill": experiment / "inputs" / "skill" / "skills" / "execution-state",
     }
     for label, skill in skills.items():
         if not (skill / "SKILL.md").is_file() or not (skill / "scripts" / "statectl.py").is_file():
@@ -151,7 +147,7 @@ def main() -> int:
     for repeat, order in enumerate(manifest["run_orders"], start=1):
         for variant_id in order:
             runner_variant, skill_kind, schema_kind = VARIANT_CONFIG[variant_id]
-            short = {"control-skill-previous": "control", "candidate-skill-current": "candidate", "ai-only": "ai"}[variant_id]
+            short = {"execution-state-1.0.0": "skill", "ai-only": "ai"}[variant_id]
             run_id = f"repeat-{repeat:02d}-{short}"
             metrics_path = output_root / run_id / "metrics.json"
             snapshot = run_snapshot(

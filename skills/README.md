@@ -5,4 +5,4 @@
 | Название файла | Ссылка на файл | Название скила или правила | Описание: для чего нужно и что делает |
 | --- | --- | --- | --- |
 | `skill-authoring/SKILL.md` | [`SKILL.md`](skill-authoring/SKILL.md) | Оформление навыков | Устанавливает структуру папок, правила для `SKILL.md`, добавления references и ведения каталога навыков. |
-| `execution-state/SKILL.md` | [`SKILL.md`](execution-state/SKILL.md) | Выполнение через состояние | Версия `0.5.0-rc.2`: универсальный explicit-only координатор для любого agent CLI, который ведёт semantic chunks, compact state/context map, quality gates и adaptive passthrough/lite/reset handoff. |
+| `execution-state/SKILL.md` | [`SKILL.md`](execution-state/SKILL.md) | Выполнение через состояние | Версия `1.0.0`: универсальный explicit-only координатор для любого agent CLI, который ведёт semantic chunks, compact state/context map, quality gates и adaptive passthrough/lite/reset handoff. |

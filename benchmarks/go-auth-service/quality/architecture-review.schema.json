@@ -3,7 +3,7 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "protocol": {"type": "string", "const": "execution-state.review/v1"},
+    "protocol": {"type": "string", "const": "execution-state.review/1.0.0"},
     "verdict": {"type": "string", "enum": ["passed", "blocked"]},
     "summary": {"type": "string", "minLength": 1},
     "blockers": {

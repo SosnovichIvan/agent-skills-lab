@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": "1.0.0",
   "context_policy": {
     "discovery_required": true,
     "reason": "The benchmark permits independent package layouts; workers discover concrete files inside each task's affected_areas before writing context-map entries."

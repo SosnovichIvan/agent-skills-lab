@@ -70,7 +70,7 @@ sandbox/approval policy.
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": "1.0.0",
   "id": "generic-agent",
   "executables": ["my-agent"],
   "capabilities": {

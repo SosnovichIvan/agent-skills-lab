@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor-neutral execution-state v4 controller.
+"""Vendor-neutral execution-state 1.0.0 controller.
 
 The controller owns compact state transitions.  It does not contain prompts,
 run agent CLIs, clear a model context, or interpret implementation references.
@@ -30,6 +30,7 @@ except ImportError:  # pragma: no cover - exercised only on non-POSIX hosts
 
 from cli_adapters import (
     MANIFEST_VERSION,
+    STDIN_PROTOCOL,
     AdapterError,
     build_runtime_plan,
     probe_runtime,
@@ -37,13 +38,14 @@ from cli_adapters import (
 )
 
 
-SCHEMA_VERSION = 4
-TASK_LEDGER_VERSION = 2
-PACKET_VERSION = 3
-WORKER_PROTOCOL = "execution-state.worker/v3"
+SCHEMA_VERSION = "1.0.0"
+TASK_LEDGER_VERSION = "1.0.0"
+PACKET_VERSION = "1.0.0"
+WORKER_PROTOCOL = "execution-state.worker/1.0.0"
+RESULT_PROTOCOL = "execution-state.result/1.0.0"
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 RELEASE_MANIFEST = SKILL_ROOT / "release.json"
-CONTEXT_MAP_VERSION = 1
+CONTEXT_MAP_VERSION = "1.0.0"
 MAX_STATE_BYTES = 8 * 1024
 MAX_PACKET_BYTES = 12 * 1024
 MAX_OBSERVATION_BYTES = 2 * 1024
@@ -54,7 +56,7 @@ MAX_STRING_BYTES = 4 * 1024
 MAX_REVIEW_INPUT_BYTES = 2 * 1024
 MAX_REVIEW_RECORD_BYTES = 1024
 MAX_REVIEW_EVIDENCE_RECORD_BYTES = 256
-ARCHITECTURE_REVIEW_PROTOCOL = "execution-state.review/v1"
+ARCHITECTURE_REVIEW_PROTOCOL = "execution-state.review/1.0.0"
 STATE_STATUSES = {"planned", "in_progress", "blocked", "complete"}
 TASK_STATUSES = {"pending", "in_progress", "blocked", "complete"}
 SOURCE_KINDS = {"standalone", "openspec"}
@@ -64,7 +66,7 @@ ERROR_INVALID = 3
 ERROR_CONFLICT = 4
 ERROR_RUNTIME = 5
 LOCK_DIRECTORY_STALE_SECONDS = 30
-TRANSACTION_VERSION = 1
+TRANSACTION_VERSION = "1.0.0"
 TRANSACTION_MARKER = ".statectl.transaction.json"
 TRANSACTION_BACKUP = ".statectl.transaction.authority.bak"
 _BANNED_STATE_KEYS = {
@@ -98,7 +100,11 @@ def _release_info() -> dict[str, Any]:
         "name": "execution-state",
         "state_schema": SCHEMA_VERSION,
         "task_ledger_schema": TASK_LEDGER_VERSION,
+        "context_map_schema": CONTEXT_MAP_VERSION,
         "worker_protocol": WORKER_PROTOCOL,
+        "result_protocol": RESULT_PROTOCOL,
+        "review_protocol": ARCHITECTURE_REVIEW_PROTOCOL,
+        "stdin_protocol": STDIN_PROTOCOL,
         "packet_version": PACKET_VERSION,
         "adapter_manifest_schema": MANIFEST_VERSION,
         "minimum_python": "3.9",

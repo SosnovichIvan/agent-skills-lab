@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,32 @@ SPEC.loader.exec_module(checker)
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_public_release_contracts_are_version_1_0_0(self) -> None:
+        release = json.loads(
+            (ROOT / "skills/execution-state/release.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("1.0.0", release["version"])
+        for field in (
+            "state_schema",
+            "task_ledger_schema",
+            "context_map_schema",
+            "packet_version",
+            "adapter_manifest_schema",
+        ):
+            self.assertEqual("1.0.0", release[field])
+        self.assertEqual(
+            "execution-state.worker/1.0.0", release["worker_protocol"]
+        )
+        self.assertEqual(
+            "execution-state.result/1.0.0", release["result_protocol"]
+        )
+        self.assertEqual(
+            "execution-state.review/1.0.0", release["review_protocol"]
+        )
+        self.assertEqual(
+            "execution-state.stdin/1.0.0", release["stdin_protocol"]
+        )
+
     def test_inventory_and_archive_are_deterministic(self) -> None:
         skill = ROOT / "skills/execution-state"
         checker.validate_inventory(skill)

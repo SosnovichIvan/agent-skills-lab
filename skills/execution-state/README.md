@@ -4,12 +4,12 @@
 компактное проверяемое состояние между semantic chunks и может передавать
 работу в новый context без transcript.
 
-Текущий финальный release candidate: `0.5.0-rc.2`. Канонические версии runtime
-contracts хранятся в `release.json` и доступны через `statectl version`.
-Runtime, schema и worker protocol зафиксированы; до полного GATE-5 версия не
-публикуется как stable `0.5.0`.
+Текущая версия: `1.0.0`. Канонические версии runtime contracts хранятся в
+`release.json` и доступны через `statectl version`. Публичные state, task,
+context-map и adapter schemas, packet format и worker/result/review/stdin
+protocols также зафиксированы как `1.0.0`.
 
-Текущая версия schema v4 добавляет quality contracts: глобальные инварианты,
+State schema `1.0.0` включает quality contracts: глобальные инварианты,
 именованные regression checks, компактную context map, integration bridge,
 периодический architecture review и adaptive handoff по cohesion key.
 
@@ -192,24 +192,14 @@ permissions или другие внешние действия.
 - [OpenSpec-lite](references/openspec-integration.md);
 - [worker protocol](references/worker-protocol.md).
 
-## Проверенный результат
+## Проверка качества
 
-Все следующие эксперименты выполняются только без SDD/OpenSpec: предыдущая
-версия skill как control, новая версия как candidate и обычный AI как baseline.
-Каждый вариант стартует в пустом проекте и новой session; контрольная модель —
-`gpt-5.6-luna`, reasoning effort `medium`. OpenSpec остаётся поддерживаемым
-режимом продукта, но исключён из новых измерений, чтобы не смешивать эффект SDD
-с эффектом execution state. Полный зафиксированный протокол:
-[standalone quality benchmark](../../benchmarks/go-auth-service/quality/README.md).
+Актуальный standalone benchmark сравнивает только `execution-state 1.0.0` и
+обычный AI. Каждый вариант стартует в пустом проекте и новой session;
+OpenSpec/SDD не входит в измеряемые переменные. Сценарий, метрики и независимый
+black-box verifier описаны в
+[quality benchmark](../../benchmarks/go-auth-service/quality/README.md).
 
-Внешний black-box verifier проверяет request ID, безопасный idempotent replay,
-конфликт изменённого body, создание и назначение custom role.
-
-Первое валидное сокращённое сравнение на 16 задачах показало для candidate
-снижение total tokens на 73.88%, output tokens на 59.60% и uncached input на
-15.82% относительно AI-only. При этом model wall time вырос на 76.14% из-за
-bootstrap, architecture reviews и recovery. Это один промежуточный прогон, а
-не итоговая статистика релиза; подробности, ограничения и checksums приведены в
-[отчёте GATE-4](../../benchmarks/go-auth-service/reports/gate4-short-gpt-5.6-luna-20260907.md).
-`0.5.0-rc.2` меняет только документацию и release metadata относительно
-проверенного runtime candidate; исполняемые helpers и contracts не изменены.
+Старые прогоны и межверсионные сравнения не входят в репозиторий. Новые
+результаты считаются отдельными наблюдениями и не используются как статистика
+релиза, пока пользователь явно не решит сохранить конкретный отчёт.

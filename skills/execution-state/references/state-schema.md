@@ -1,4 +1,4 @@
-# Compact state schema v4
+# Compact state schema 1.0.0
 
 `statectl` — единственная публичная точка управления. Все команды печатают одну
 короткую JSON-строку; packet записывается только в файл.
@@ -19,7 +19,7 @@ Prompt templates и runtime adapter manifests не копируются в state
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": "1.0.0",
   "id": "add-rate-limit",
   "revision": 4,
   "source": {
@@ -157,7 +157,7 @@ revision.
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": "1.0.0",
   "tasks": [
     {
       "id": "auth-token",
@@ -212,7 +212,7 @@ revision.
 
 <STATECTL> architecture-review --id auth --project-root . \
   --expected-revision 2 \
-  --review-json '{"protocol":"execution-state.review/v1","verdict":"passed","summary":"Module boundaries remain intact","blockers":[],"planned_gaps":[],"recommendations":[],"checks":[{"id":"architecture-contracts","status":"passed","summary":"Dependency graph and wiring verified"}]}'
+  --review-json '{"protocol":"execution-state.review/1.0.0","verdict":"passed","summary":"Module boundaries remain intact","blockers":[],"planned_gaps":[],"recommendations":[],"checks":[{"id":"architecture-contracts","status":"passed","summary":"Dependency graph and wiring verified"}]}'
 
 <STATECTL> validate --id auth --project-root .
 ```

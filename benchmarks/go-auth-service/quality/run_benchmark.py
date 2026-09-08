@@ -130,8 +130,8 @@ def save_json(path: Path, value: dict[str, Any]) -> None:
 def load_tasks(path: Path) -> list[dict[str, Any]]:
     payload = read_json(path)
     tasks = payload.get("tasks")
-    if payload.get("schema_version") != 2 or not isinstance(tasks, list):
-        raise RuntimeError("quality benchmark requires task catalog schema v2")
+    if payload.get("schema_version") != "1.0.0" or not isinstance(tasks, list):
+        raise RuntimeError("quality benchmark requires task catalog schema 1.0.0")
     if len(tasks) != 32:
         raise RuntimeError(f"quality benchmark requires 32 tasks, found {len(tasks)}")
     context_policy = payload.get("context_policy", {})
@@ -658,7 +658,8 @@ def initialize_state(
 
 
 def supports_quality_state(statectl: Path) -> bool:
-    return "SCHEMA_VERSION = 4" in statectl.read_text(encoding="utf-8")
+    source = statectl.read_text(encoding="utf-8")
+    return 'SCHEMA_VERSION = "1.0.0"' in source
 
 
 def supports_structured_review(statectl: Path) -> bool:
@@ -679,8 +680,7 @@ def parse_worker_result(path: Path) -> dict[str, Any]:
 def worker_result_matches(result: dict[str, Any], packet: dict[str, Any]) -> tuple[bool, str]:
     request_protocol = packet.get("protocol")
     protocols = {
-        "execution-state.worker/v3": "execution-state.result/v3",
-        "execution-state.worker/v2": "execution-state.result/v2",
+        "execution-state.worker/1.0.0": "execution-state.result/1.0.0",
     }
     result_protocol = protocols.get(request_protocol)
     if result_protocol is None:
@@ -1057,7 +1057,7 @@ def inject_canary_recovery(
 ) -> dict[str, Any]:
     state = read_json(state_path(project, state_id))
     review_result = {
-        "protocol": "execution-state.review/v1",
+        "protocol": "execution-state.review/1.0.0",
         "verdict": "blocked",
         "summary": "Deterministic canary recovery is required before continuation",
         "blockers": [

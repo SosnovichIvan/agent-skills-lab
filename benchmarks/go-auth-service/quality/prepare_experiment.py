@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an immutable standalone-only experiment plan and schema-v2 task catalog."""
+"""Create an immutable standalone-only experiment plan and task catalog 1.0.0."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def enrich_tasks(
             }
         )
     return {
-        "schema_version": 2,
+        "schema_version": "1.0.0",
         "context_policy": context_policy or {
             "discovery_required": True,
             "reason": "Concrete files are discovered within affected areas for implementation-independent comparison.",
@@ -107,7 +107,7 @@ def snapshot_skill(repo_root: Path, ref: str, destination: Path, label: str) -> 
     return archive
 
 
-def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
+def prepare(root: Path, run_id: str, skill_ref: str) -> Path:
     quality = Path(__file__).resolve().parent
     benchmark = quality.parent
     profile_path = quality / "experiment.json"
@@ -118,20 +118,17 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
         raise ValueError("SDD/OpenSpec variants are forbidden in new experiments")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,95}", run_id):
         raise ValueError("invalid run-id")
-    if not re.fullmatch(r"[0-9a-f]{40}", candidate_ref):
-        raise ValueError("candidate-ref must be a full committed Git SHA")
-    if candidate_ref == profile.get("control_ref"):
-        raise ValueError("candidate-ref must differ from control_ref")
+    if not re.fullmatch(r"[0-9a-f]{40}", skill_ref):
+        raise ValueError("skill-ref must be a full committed Git SHA")
     repo_root = quality.parents[2]
-    for label, ref in (("control", profile.get("control_ref")), ("candidate", candidate_ref)):
-        check = subprocess.run(
-            ["git", "cat-file", "-e", f"{ref}^{{commit}}"],
-            cwd=repo_root,
-            capture_output=True,
-            check=False,
-        )
-        if check.returncode != 0:
-            raise ValueError(f"{label} ref is not a committed Git object: {ref}")
+    check = subprocess.run(
+        ["git", "cat-file", "-e", f"{skill_ref}^{{commit}}"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+    )
+    if check.returncode != 0:
+        raise ValueError(f"skill ref is not a committed Git object: {skill_ref}")
     destination = root.resolve() / run_id
     if destination.exists():
         raise ValueError(f"refusing to overwrite experiment: {destination}")
@@ -142,20 +139,18 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
         raise ValueError("expected the fixed 32-task quality catalog")
     destination.mkdir(parents=True)
     inputs = destination / "inputs"
-    control_archive = snapshot_skill(repo_root, profile["control_ref"], inputs, "control")
-    candidate_archive = snapshot_skill(repo_root, candidate_ref, inputs, "candidate")
+    skill_archive = snapshot_skill(repo_root, skill_ref, inputs, "skill")
     catalog = enrich_tasks(source_tasks, source_catalog.get("context_policy"))
     catalog_path = destination / "tasks.json"
     catalog_path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     manifest = {
         **profile,
-        "candidate_ref": candidate_ref,
+        "skill_ref": skill_ref,
         "run_id": run_id,
         "prepared_at": datetime.now(timezone.utc).isoformat(),
         "profile_sha256": sha256(profile_path),
         "task_catalog_sha256": sha256(catalog_path),
-        "control_snapshot_sha256": sha256(control_archive),
-        "candidate_snapshot_sha256": sha256(candidate_archive),
+        "skill_snapshot_sha256": sha256(skill_archive),
         "status": "prepared",
     }
     (destination / "manifest.json").write_text(
@@ -167,12 +162,12 @@ def prepare(root: Path, run_id: str, candidate_ref: str) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--candidate-ref", required=True)
+    parser.add_argument("--skill-ref", required=True)
     parser.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("quality-%Y%m%dT%H%M%SZ"))
     parser.add_argument("--output-root", type=Path, default=Path("benchmarks/go-auth-service/results/quality-runs"))
     args = parser.parse_args()
     try:
-        output = prepare(args.output_root, args.run_id, args.candidate_ref)
+        output = prepare(args.output_root, args.run_id, args.skill_ref)
     except ValueError as error:
         print(json.dumps({"ok": False, "error": str(error)}))
         return 2

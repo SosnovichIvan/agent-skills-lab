@@ -24,9 +24,9 @@ class RunExperimentTests(unittest.TestCase):
             experiment = Path(temporary)
             manifest = {
                 "protocol_version": 5,
-                "run_orders": [["control-skill-previous", "candidate-skill-current"]],
+                "run_orders": [["execution-state-1.0.0", "ai-only"]],
             }
-            complete = experiment / "runs" / "repeat-01-control" / "metrics.json"
+            complete = experiment / "runs" / "repeat-01-skill" / "metrics.json"
             complete.parent.mkdir(parents=True)
             complete.write_text(
                 json.dumps({"runs": {"01-skill-standalone": {
@@ -36,24 +36,22 @@ class RunExperimentTests(unittest.TestCase):
             )
             path = run_experiment.write_validity_report(experiment, manifest)
             report = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(["repeat-01-control"], report["comparison_runs"])
-            self.assertIn("repeat-01-candidate", report["infrastructure_interruptions"])
+            self.assertEqual(["repeat-01-skill"], report["comparison_runs"])
+            self.assertIn("repeat-01-ai", report["infrastructure_interruptions"])
 
     def test_product_failure_does_not_stop_later_variants(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             experiment = Path(temporary)
-            (experiment / "inputs/control/skills/execution-state/scripts").mkdir(parents=True)
-            (experiment / "inputs/candidate/skills/execution-state/scripts").mkdir(parents=True)
-            for label in ("control", "candidate"):
-                skill = experiment / f"inputs/{label}/skills/execution-state"
-                (skill / "SKILL.md").write_text("skill", encoding="utf-8")
-                (skill / "scripts/statectl.py").write_text("controller", encoding="utf-8")
+            skill = experiment / "inputs/skill/skills/execution-state"
+            (skill / "scripts").mkdir(parents=True)
+            (skill / "SKILL.md").write_text("skill", encoding="utf-8")
+            (skill / "scripts/statectl.py").write_text("controller", encoding="utf-8")
             manifest = {
                 "protocol_version": 5,
                 "source": "standalone",
                 "model": "gpt-5.6-luna",
                 "reasoning_effort": "medium",
-                "run_orders": [["control-skill-previous", "candidate-skill-current", "ai-only"]],
+                "run_orders": [["execution-state-1.0.0", "ai-only"]],
             }
             (experiment / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
             (experiment / "tasks.json").write_text("{}", encoding="utf-8")
@@ -86,7 +84,7 @@ class RunExperimentTests(unittest.TestCase):
             ):
                 self.assertEqual(0, run_experiment.main())
             self.assertEqual(
-                ["repeat-01-control", "repeat-01-candidate", "repeat-01-ai"],
+                ["repeat-01-skill", "repeat-01-ai"],
                 calls,
             )
 
