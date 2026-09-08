@@ -1,0 +1,30 @@
+{
+  "protocol_version": 5,
+  "name": "execution-state-1.0.0-standalone-quality",
+  "model": "gpt-5.6-luna",
+  "reasoning_effort": "medium",
+  "repeats": 3,
+  "source": "standalone",
+  "empty_project_per_variant": true,
+  "fresh_initial_session": true,
+  "variants": [
+    {
+      "id": "execution-state-1.0.0",
+      "skill": true,
+      "skill_ref": "skill_ref",
+      "context_mode": "adaptive-by-cohesion-key"
+    },
+    {
+      "id": "ai-only",
+      "skill": false,
+      "skill_ref": null,
+      "context_mode": "persistent-session"
+    }
+  ],
+  "run_orders": [
+    ["execution-state-1.0.0", "ai-only"],
+    ["ai-only", "execution-state-1.0.0"],
+    ["execution-state-1.0.0", "ai-only"]
+  ],
+  "final_verifier": "benchmarks/go-auth-service/quality/verify_behavior.py"
+}

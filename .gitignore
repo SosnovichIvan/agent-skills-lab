@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+benchmarks/go-auth-service/results/quality-runs/
+benchmarks/go-auth-service/results/**/raw/
+benchmarks/go-auth-service/results/**/projects/
+benchmarks/go-auth-service/projects/
