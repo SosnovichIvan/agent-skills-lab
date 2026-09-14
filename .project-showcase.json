@@ -1,0 +1,133 @@
+{
+  "name": "Agent Skills Lab",
+  "repositoryUrl": "https://github.com/SosnovichIvan/agent-skills-lab",
+  "websiteUrl": null,
+  "technologies": [
+    "Python",
+    "Markdown",
+    "JSON",
+    "pytest",
+    "Git"
+  ],
+  "logo": "assets/showcase/logo.svg",
+  "description": "Библиотека из 14 переиспользуемых навыков для агентных CLI: разработка и ревью фронтенда и бекенда, базы данных, архитектура, тексты, дизайн, логотипы и иконки. Включает модульный установщик, управление состоянием длинных задач и проверяемые сценарии.",
+  "architecture": [
+    "Каталог skills описывает bundled и modular навыки, а catalog.json связывает их с обязательными и выбираемыми reference-профилями.",
+    "Python-установщик выбирает набор навыков и профилей, копирует связанные материалы и регистрирует их в инструкциях агента; при повторной установке сохраняет backup.",
+    "execution-state добавляет управляемое состояние для длинных агентных задач: маршрутизацию, checkpoints, quality contracts и перенос работы между контекстами.",
+    "Тесты проверяют установщик, состав пакетов и execution-state. Начальные прогоны Luna/Terra и пользовательская приёмка визуальных примеров документируются отдельно от измеренных результатов execution-state."
+  ],
+  "benefitSkills": [
+    {
+      "name": "Execution State",
+      "description": "Ведёт компактное проверяемое состояние длинной агентной задачи, снижая повторную передачу истории между контекстами.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/main/skills/execution-state/README.md",
+      "highlights": [
+        {
+          "value": "−73,88%",
+          "label": "total tokens"
+        },
+        {
+          "value": "16/16",
+          "label": "задач завершено"
+        },
+        {
+          "value": "+76,14%",
+          "label": "trade-off по времени",
+          "tone": "tradeoff"
+        }
+      ],
+      "statistics": {
+        "title": "Дополнительные результаты candidate против AI-only",
+        "caption": "16 задач",
+        "rows": [
+          {
+            "metric": "Output tokens",
+            "result": "−59,60%"
+          },
+          {
+            "metric": "Uncached input",
+            "result": "−15,82%"
+          },
+          {
+            "metric": "Repair tokens",
+            "result": "0 против 2 296 689"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Frontend Engineering",
+      "description": "Разработка интерфейсов с учётом состояния, API, доступности и структуры проекта. Помогает агенту согласовывать компоненты и пользовательские сценарии; при установке выбираются только нужные языки, фреймворки и правила организации кода.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/frontend-engineering/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Backend Engineering",
+      "description": "Разработка API и серверной логики с проверкой входных данных, авторизацией и обработкой отказов. Даёт агенту правила выбранного серверного стека и помогает заранее учитывать ошибки, конкурентность и эксплуатацию.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/backend-engineering/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Frontend Review",
+      "description": "Ревью интерфейсного кода: состояния загрузки, гонки запросов, доступность и регрессии. Помогает получать конкретные замечания с условиями воспроизведения и ссылками на код вместо списка вкусовых предпочтений.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/frontend-review/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Backend Review",
+      "description": "Ревью API, прав доступа, изоляции данных и поведения при сбоях. Помогает находить ошибки на границах сервиса и объяснять их последствия для пользователя.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/backend-review/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Database Engineering",
+      "description": "Проектирование схем, SQL-запросов, индексов и миграций для PostgreSQL, MySQL и SQLite. Помогает планировать изменения с учётом существующих данных, блокировок и совместимости версий приложения.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/database-engineering/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Database Review",
+      "description": "Проверка SQL и миграций: планы запросов, изоляция данных, транзакции и порядок развёртывания. Помогает обнаруживать опасные операции и несовместимые изменения до применения в рабочей базе.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/database-review/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Project Architecture",
+      "description": "Проектирование границ системы, контрактов и этапов реализации. Помогает сопоставить решения с требованиями проекта, записать компромиссы и критерии проверки без ненужного усложнения.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/project-architecture/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Content Writing",
+      "description": "Создание и редактура продуктовых, маркетинговых и технических текстов. Помогает адаптировать материал к аудитории, отделять проверенные факты от предположений и убирать неподтверждённые обещания.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/content-writing/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "UX Writing",
+      "description": "Тексты кнопок, форм, ошибок и пустых состояний. Помогает согласовать слова с реальным поведением интерфейса: объяснить результат действия и следующий шаг, не обещая того, чего система не знает.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/ux-writing/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "UI/UX Design",
+      "description": "Проектирование интерфейсов: композиция, типографика, цвет, адаптивность и состояния. Локальный поиск рекомендаций помогает выбрать направление под задачу. На практике созданы три варианта «Мой МИР»; пользователь выбрал и одобрил «Круг».",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/ui-ux-design/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Brand Logo Design",
+      "description": "Разработка концепций логотипа, векторного оригинала и вариантов применения. Помогает сохранить узнаваемость знака при изменении размера и фона. Логотип с анимацией и адаптацией к палитре персонального сайта одобрен пользователем.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/brand-logo-design/SKILL.md",
+      "highlights": []
+    },
+    {
+      "name": "Icon System",
+      "description": "Создание и интеграция согласованного набора SVG-иконок. Помогает выдерживать геометрию, визуальный вес, цвет и доступные подписи. Иконки жима лёжа, становой тяги и кластеров проверены в двух темах и одобрены пользователем; подробные версии рассчитаны на 48–96 px.",
+      "readmeUrl": "https://github.com/SosnovichIvan/agent-skills-lab/blob/89564d0214d39b9050d5d04476b0560914a37511/skills/icon-system/SKILL.md",
+      "highlights": []
+    }
+  ],
+  "screenshots": []
+}

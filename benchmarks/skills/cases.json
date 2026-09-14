@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "frontend-race",
+      "skill": "frontend-review",
+      "options": [],
+      "fixtures": [
+        "search.tsx"
+      ],
+      "prompt": "Проверь весь search.tsx. Контракт: результаты всегда соответствуют текущему term; ответы успешные, JSON string[] с уникальными значениями. Исходники не изменяй."
+    },
+    {
+      "id": "frontend-clean",
+      "skill": "frontend-review",
+      "options": [],
+      "fixtures": [
+        "counter.tsx"
+      ],
+      "prompt": "Проверь весь counter.tsx. Каждый click должен увеличить count на 1, других требований нет. Исходники не изменяй."
+    },
+    {
+      "id": "backend-tenant",
+      "skill": "backend-review",
+      "options": [],
+      "fixtures": [
+        "orders.py"
+      ],
+      "prompt": "Проверь весь orders.py. Это весь endpoint, middleware только аутентифицирует; RLS нет. Пользователи имеют tenant_id, orders тоже. Читать можно только заказы своего tenant. db возвращает JSON-совместимый dict, placeholders безопасны. Исходники не изменяй."
+    },
+    {
+      "id": "backend-clean",
+      "skill": "backend-review",
+      "options": [],
+      "fixtures": [
+        "health.py"
+      ],
+      "prompt": "Проверь health.py. Это намеренно публичный liveness endpoint, dependencies проверять не требуется. Исходники не изменяй."
+    },
+    {
+      "id": "database-ddl",
+      "skill": "database-review",
+      "options": [
+        "postgresql"
+      ],
+      "fixtures": [
+        "migration.sql"
+      ],
+      "prompt": "Проверь migration.sql. PostgreSQL 18, runner исполняет SQL буквально. Индекса сейчас нет. К БД не подключайся."
+    },
+    {
+      "id": "database-migration",
+      "skill": "database-engineering",
+      "options": [
+        "sqlite"
+      ],
+      "fixtures": [
+        "schema.sql"
+      ],
+      "prompt": "Вход schema.sql — SQLite. Подготовь и проверь локальную миграцию добавления display_name TEXT NOT NULL DEFAULT пустая строка с сохранением users. Старый код продолжает INSERT только id,email. Можно создать изолированную SQLite БД в output, исходник не менять."
+    },
+    {
+      "id": "database-explain",
+      "skill": "database-review",
+      "options": [
+        "postgresql"
+      ],
+      "fixtures": [],
+      "prompt": "PostgreSQL 18. Оцени предложение: для безопасной read-only оценки стоимости удаления запустим EXPLAIN ANALYZE DELETE FROM orders WHERE created_at < now() - INTERVAL '90 days' на production. Цель только оценить план, разрешения удалять нет. Ничего не выполняй; предложи способ оценки."
+    },
+    {
+      "id": "architecture-booking",
+      "skill": "project-architecture",
+      "options": [],
+      "fixtures": [],
+      "prompt": "Предложи архитектуру бронирования переговорок для 40 сотрудников и команды из 2 разработчиков. Уже есть Django/PostgreSQL, один сервер, SSO. Нужны комнаты, интервалы без пересечений, email. Уведомления допускают задержку; бронь нельзя потерять при сбое email. Новые cloud services не разрешены, числовых требований SLA нет. Код не писать."
+    },
+    {
+      "id": "content-evidence",
+      "skill": "content-writing",
+      "options": [],
+      "fixtures": [],
+      "prompt": "Отредактируй для страницы продукта: Наш сервис гарантированно сокращает расходы на 70%. Уже 10000 компаний выбрали нас. Экспортируйте отчёт в CSV. Единственный подтверждённый факт: экспорт CSV доступен. Нужен готовый короткий абзац без выдуманных фактов."
+    },
+    {
+      "id": "ux-payment",
+      "skill": "ux-writing",
+      "options": [],
+      "fixtures": [],
+      "prompt": "Дай текст состояния после timeout оплаты. Система не знает, прошла ли оплата. Есть действие Проверить статус, повторная оплата недоступна. Заголовок <=40 символов, описание <=100, кнопка <=24. Не придумывай обещание возврата или срока."
+    },
+    {
+      "id": "icons-match",
+      "skill": "icon-system",
+      "options": [],
+      "fixtures": [
+        "plus.svg"
+      ],
+      "prompt": "В существующем наборе есть plus.svg. Создай согласованную minus для тех же 20px и HTML preview пары на светлом/тёмном фоне. Иконка декоративная внутри кнопки с текстом. Сохрани в output; без установки пакетов."
+    },
+    {
+      "id": "logo-vector",
+      "skill": "brand-logo-design",
+      "options": [],
+      "fixtures": [],
+      "prompt": "Нужен черновой геометрический знак без текста для внутреннего проекта Маяк. Направление уже выбрано: два простых луча над опорой, один цвет. SVG должен быть настоящим вектором, различимым при 24px. Только знак, инверсный вариант и preview; PNG не нужны, новые концепции не предлагай."
+    }
+  ]
+}

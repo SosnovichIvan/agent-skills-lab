@@ -1,0 +1,62 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI — три знака в движении</title>
+<style>
+:root{color-scheme:light;--paper:#f4f3ee;--card:#fbfaf7;--ink:#20211f;--muted:#696a63;--line:#d8d9d1;--accent:#657445;--logo-ink:#20211f}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:background .35s,color .35s}body.dark{color-scheme:dark;--paper:#141713;--card:#1c201b;--ink:#eeefe5;--muted:#b0b4a5;--line:#3d4437;--accent:#c7d7a6;--logo-ink:#eeefe5}
+main{max-width:1440px;padding:38px 48px 30px;margin:auto}.masthead{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:25px;gap:20px}.brand{font-weight:650;font-size:15px;letter-spacing:-.4px}.brand span{color:var(--muted);font-weight:400}.edition{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted)}
+.intro{display:flex;align-items:end;justify-content:space-between;gap:30px;padding:52px 0 35px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:16px}h1{font-size:clamp(34px,4.4vw,62px);line-height:1.04;font-weight:500;letter-spacing:-2.5px;margin:0}h1 em{font-family:Georgia,serif;font-weight:400}.description{max-width:290px;font-size:14px;line-height:1.65;color:var(--muted);margin:0 0 3px}
+.controls{display:flex;gap:10px;align-items:center;margin-bottom:24px;flex-wrap:wrap}.control,select{height:44px;border:1px solid var(--line);border-radius:24px;background:transparent;color:var(--ink);padding:0 18px;font:inherit;font-size:13px;cursor:pointer}.control.primary{background:var(--ink);color:var(--paper);border-color:var(--ink);min-width:114px}.control:hover,select:hover{border-color:var(--ink)}button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:4px}button:disabled{opacity:.5;cursor:default}.rate{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}.card-top{display:flex;justify-content:space-between;align-items:center;padding:23px 25px 0}.index{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted)}.tag{font-size:11px;color:var(--muted)}.stage{height:300px;display:flex;align-items:center;justify-content:center;padding:43px 42px 29px}.stage svg{display:block;width:100%;height:100%;overflow:visible}.card-bottom{padding:16px 25px 20px}h2{font-size:18px;letter-spacing:-.4px;font-weight:550;margin:0 0 8px}.card-bottom p{font-size:12px;color:var(--muted);margin:0 0 24px;line-height:1.5}.card-actions{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:12px;gap:8px}.replay{border:0;background:none;color:var(--ink);font:inherit;font-size:20px;padding:4px 0;cursor:pointer;min-height:44px}.replay span{font-size:12px;margin-left:5px}a{color:var(--muted);font-size:12px;text-decoration:none;padding:12px 0}a:hover{color:var(--ink)}.foot{display:flex;justify-content:space-between;gap:20px;font-size:11px;line-height:1.7;color:var(--muted);padding-top:24px}.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:7px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(min-width:1500px){.stage{height:360px}}@media(max-width:960px){main{padding:24px}.stage{height:250px;padding:35px 25px}.card-top{padding:20px 18px 0}.card-bottom{padding:16px 18px}.intro{gap:24px}.description{max-width:240px}h1{letter-spacing:-1.6px}.card-actions{flex-wrap:wrap}}@media(max-width:700px){main{padding:22px 18px}.edition{font-size:9px}.intro{display:block;padding:38px 0 24px}.description{max-width:100%;margin-top:20px}.grid{grid-template-columns:1fr}.stage{height:300px;padding:42px 65px}.rate{margin-left:0}.foot{display:block}.card-actions{flex-wrap:nowrap}.controls{gap:8px}.control,select{padding:0 14px}h1{font-size:44px}.card-top{padding:22px 24px 0}.card-bottom{padding:16px 24px 20px}}
+@media(prefers-reduced-motion:reduce){body{transition:none}}
+</style></head><body><main>
+<header class="masthead"><div class="brand">AI <span>/ Senior frontend developer</span></div><div class="edition">Identity in motion · 01—03</div></header>
+<section class="intro"><div><div class="eyebrow">Три характера. Один подход.</div><h1>Форма обретает<br><em>движение.</em></h1></div><p class="description">Спокойная сборка, точные траектории и пауза, чтобы рассмотреть каждый знак.</p></section>
+<div class="controls"><button id="pause" class="control primary">Ⅱ Пауза</button><button id="restart" class="control">↻ Повторить все</button><button id="theme" class="control" aria-pressed="false">Тёмный фон</button><label class="rate">Скорость <select id="speed"><option value="0.65">0.65× — медленно</option><option value="1" selected>1× — обычная</option><option value="1.4">1.4× — быстрее</option></select></label></div>
+<div class="grid"><article class="card" aria-labelledby="title-ai">
+ <div class="card-top"><span class="index">01</span><span class="tag">Precision</span></div>
+ <div class="stage"><svg xmlns="http://www.w3.org/2000/svg" id="ai-mark" viewBox="185 115 800 675" role="img" aria-label="AI / Монограмма" fill="currentColor" style="color:var(--logo-ink,#171717)"><style>#ai-mark .piece {transform-box:fill-box;transform-origin:center;animation:ai-assemble 7.8s cubic-bezier(.22,1,.36,1) infinite both;}
+@keyframes ai-assemble {
+ 0%,3% {opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.96)}
+ 22%,76% {opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}
+ 93%,100% {opacity:0;transform:translate(calc(var(--x) * -.25),calc(var(--y) * -.25)) rotate(0deg) scale(.98)}
+}
+@media(prefers-reduced-motion:reduce){#ai-mark .piece{animation:none;opacity:1;transform:none}}</style><path class="piece" d="M257 738H392L562 444L501 331Z" style="--x:-46px;--y:80px;--r:-4deg;animation-delay:0s"/><path class="piece" d="M514 302L594 176L780 498V738H754Z" style="--x:24px;--y:-70px;--r:3deg;animation-delay:.15s"/><path class="piece" d="M482 625H665L623 547H528Z" style="--x:0px;--y:40px;--r:0deg;animation-delay:.32s"/><path class="piece" d="M798 239H911V738H798Z" style="--x:0px;--y:-75px;--r:0deg;animation-delay:.42s"/></svg></div>
+ <div class="card-bottom"><h2 id="title-ai">AI / Монограмма</h2><p>Собирается в единый знак</p>
+ <div class="card-actions"><button class="replay" data-target="ai" aria-label="Повторить AI / Монограмма">↻ <span>Повторить</span></button><a href="ai-animated.svg" download>Скачать SVG <span aria-hidden="true">↗</span></a></div></div>
+ </article><article class="card" aria-labelledby="title-code">
+ <div class="card-top"><span class="index">02</span><span class="tag">Expression</span></div>
+ <div class="stage"><svg xmlns="http://www.w3.org/2000/svg" id="code-mark" viewBox="225 185 775 560" role="img" aria-label="Code / Разработка" fill="currentColor" style="color:var(--logo-ink,#171717)"><style>#code-mark .piece {transform-box:fill-box;transform-origin:center;animation:code-assemble 7.8s cubic-bezier(.22,1,.36,1) infinite both;}
+@keyframes code-assemble {
+ 0%,3% {opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.96)}
+ 22%,76% {opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}
+ 93%,100% {opacity:0;transform:translate(calc(var(--x) * -.25),calc(var(--y) * -.25)) rotate(0deg) scale(.98)}
+}
+@media(prefers-reduced-motion:reduce){#code-mark .piece{animation:none;opacity:1;transform:none}}</style><path class="piece" d="M293 468L517 271V373L405 469L500 557L465 639Z" style="--x:70px;--y:0px;--r:-5deg;animation-delay:0s"/><path class="piece" d="M758 297L936 469L712 662V561L822 469L724 382Z" style="--x:-70px;--y:0px;--r:5deg;animation-delay:.10s"/><path class="piece" d="M649 255H744L575 677H479Z" style="--x:0px;--y:38px;--r:-16deg;animation-delay:.25s"/></svg></div>
+ <div class="card-bottom"><h2 id="title-code">Code / Разработка</h2><p>Скобки раскрываются вокруг слеша</p>
+ <div class="card-actions"><button class="replay" data-target="code" aria-label="Повторить Code / Разработка">↻ <span>Повторить</span></button><a href="code-animated.svg" download>Скачать SVG <span aria-hidden="true">↗</span></a></div></div>
+ </article><article class="card" aria-labelledby="title-modules">
+ <div class="card-top"><span class="index">03</span><span class="tag">Composition</span></div>
+ <div class="stage"><svg xmlns="http://www.w3.org/2000/svg" id="modules-mark" viewBox="270 55 715 780" role="img" aria-label="Layers / Интерфейсы" fill="currentColor" style="color:var(--logo-ink,#171717)"><style>#modules-mark .piece {transform-box:fill-box;transform-origin:center;animation:modules-assemble 7.8s cubic-bezier(.22,1,.36,1) infinite both;}
+@keyframes modules-assemble {
+ 0%,3% {opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.96)}
+ 22%,76% {opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}
+ 93%,100% {opacity:0;transform:translate(calc(var(--x) * -.25),calc(var(--y) * -.25)) rotate(0deg) scale(.98)}
+}
+@media(prefers-reduced-motion:reduce){#modules-mark .piece{animation:none;opacity:1;transform:none}}</style><path class="piece" d="M449 256L767 108Q780 103 781 115V387Q781 399 770 394L497 279Q489 275 489 285V388L449 369Z" style="--x:0px;--y:-55px;--r:-5deg;animation-delay:0s"/><path class="piece" d="M339 349Q339 335 351 342L555 444Q563 448 563 460V641L634 678V756Q634 770 621 763L347 620Q339 616 339 606Z" style="--x:-46px;--y:28px;--r:4deg;animation-delay:.17s"/><path class="piece" d="M600 391Q600 375 613 382L906 502Q915 506 915 518V768Q915 783 902 777L600 623Z" style="--x:50px;--y:30px;--r:-4deg;animation-delay:.34s"/></svg></div>
+ <div class="card-bottom"><h2 id="title-modules">Layers / Интерфейсы</h2><p>Модули находят своё место</p>
+ <div class="card-actions"><button class="replay" data-target="modules" aria-label="Повторить Layers / Интерфейсы">↻ <span>Повторить</span></button><a href="modules-animated.svg" download>Скачать SVG <span aria-hidden="true">↗</span></a></div></div>
+ </article></div>
+<footer class="foot"><span id="status" role="status"><span class="dot"></span>Плавный цикл · 7.8 секунды</span><span>SVG + CSS · масштабируются без потери чёткости</span></footer></main>
+<script>
+const pause=document.querySelector('#pause'), restart=document.querySelector('#restart'), speed=document.querySelector('#speed');
+const reduced=matchMedia('(prefers-reduced-motion: reduce)'); let paused=false;
+const animations=()=>Array.from(document.querySelectorAll('.stage svg')).flatMap(svg=>svg.getAnimations({subtree:true}));
+function sync(){animations().forEach(a=>{a.updatePlaybackRate(Number(speed.value));if(paused||document.hidden)a.pause();else a.play()});pause.textContent=paused?'▶ Продолжить':'Ⅱ Пауза';pause.setAttribute('aria-label',paused?'Продолжить анимации':'Приостановить анимации');if(!reduced.matches)document.querySelector('#status').textContent=(paused?'На паузе · ':'Плавный цикл · ')+(7.8/Number(speed.value)).toFixed(1)+' секунды'}
+pause.addEventListener('click',()=>{paused=!paused;sync()});
+function replay(target){const group=target?document.querySelector('#'+target+'-mark').getAnimations({subtree:true}):animations();group.forEach(a=>{a.currentTime=0});paused=false;sync()}
+restart.addEventListener('click',()=>replay());document.querySelectorAll('.replay').forEach(b=>b.addEventListener('click',()=>replay(b.dataset.target)));
+speed.addEventListener('change',sync);document.addEventListener('visibilitychange',sync);
+document.querySelector('#theme').addEventListener('click',e=>{const dark=document.body.classList.toggle('dark');e.currentTarget.textContent=dark?'Светлый фон':'Тёмный фон';e.currentTarget.setAttribute('aria-pressed',String(dark))});
+function preferences(){pause.disabled=restart.disabled=speed.disabled=reduced.matches;document.querySelectorAll('.replay').forEach(b=>b.disabled=reduced.matches);document.querySelector('#status').textContent=reduced.matches?'Движение отключено по настройкам устройства':'Плавный цикл · 7.8 секунды';if(!reduced.matches)sync()}
+reduced.addEventListener('change',preferences);preferences();
+</script></body></html>
