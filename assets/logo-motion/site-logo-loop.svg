@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="300 80 650 720" role="img" aria-label="Иван Соснович — архитектура интерфейсов"><style>
+.fit-piece{transform-box:fill-box;transform-origin:center;animation:var(--fit-name,fit-loop) var(--fit-duration,10s) cubic-bezier(.22,1,.36,1) var(--fit-count,infinite) both;animation-delay:var(--delay)}
+.fit-signal{animation:fit-breathe 9s ease-in-out 2s infinite}
+@keyframes fit-assemble{from{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.94)}to{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}}
+@keyframes fit-loop{0%,2%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.94)}18%,82%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}100%{opacity:0;transform:translate(calc(var(--x) * .4),calc(var(--y) * .4)) rotate(var(--r)) scale(.97)}}
+@keyframes fit-breathe{0%,65%,100%{opacity:1}80%{opacity:.84}}
+@media(prefers-reduced-motion:reduce){.fit-piece,.fit-signal{animation:none!important;opacity:1;transform:none}}
+</style><g class="fit-piece" style="--x:0px;--y:-40px;--r:-3deg;--delay:0ms"><path class="" fill="#B7F5E5" d="M449 256L767 108Q780 103 781 115V387Q781 399 770 394L497 279Q489 275 489 285V388L449 369Z"/></g><g class="fit-piece" style="--x:-32px;--y:20px;--r:3deg;--delay:110ms"><path class="" fill="#42BFA5" d="M339 349Q339 335 351 342L555 444Q563 448 563 460V641L634 678V756Q634 770 621 763L347 620Q339 616 339 606Z"/></g><g class="fit-piece" style="--x:36px;--y:18px;--r:-3deg;--delay:220ms"><path class="fit-signal" fill="#72E5CA" d="M600 391Q600 375 613 382L906 502Q915 506 915 518V768Q915 783 902 777L600 623Z"/></g></svg>

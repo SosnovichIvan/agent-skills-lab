@@ -5,3 +5,5 @@ benchmarks/go-auth-service/results/quality-runs/
 benchmarks/go-auth-service/results/**/raw/
 benchmarks/go-auth-service/results/**/projects/
 benchmarks/go-auth-service/projects/
+# Independent Sites prototype; keep its nested repository and dependencies local.
+assets/my-world/

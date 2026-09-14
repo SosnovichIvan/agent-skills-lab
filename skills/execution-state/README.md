@@ -1,8 +1,9 @@
 # execution-state
 
-`execution-state` — explicit-only skill для долгих агентных задач. Он хранит
-компактное проверяемое состояние между semantic chunks и может передавать
-работу в новый context без transcript.
+`execution-state` — управляемый skill для долгих агентных задач. Без project
+policy он запускается только явно; установщик может потребовать adaptive routing
+для зависимых либо для всех задач. Skill хранит компактное проверяемое состояние
+между semantic chunks и может передавать работу в новый context без transcript.
 
 Текущая версия: `1.0.0`. Канонические версии runtime contracts хранятся в
 `release.json` и доступны через `statectl version`. Публичные state, task,
@@ -20,7 +21,7 @@ Core не зависит от Codex, Claude, Gemini или модели. Agent C
 ## Маршрутизация
 
 ```text
-явный вызов execution-state
+явный вызов или project execution policy
 ├── короткая связная задача → passthrough, state не создаётся
 ├── reset недоступен        → lite checkpoint
 └── длинная задача          → chunk → checkpoint → fresh/compact/manual
@@ -78,6 +79,25 @@ production-развёртыванием.
 
 ## Установка
 
+Рекомендуемый способ — общий интерактивный установщик из корня репозитория:
+
+```bash
+python3 install.py
+```
+
+Выбери `Execution State`, путь проекта, папку skills и agent instructions file.
+При прямом выборе `Execution State` установщик по умолчанию регистрирует
+`all_tasks` policy: каждая задача проходит adaptive routing, но короткая задача
+получает `passthrough` без создания state. Для другого поведения используй
+`--execution-state-policy explicit` или `dependent_tasks`.
+
+`--enforcement instructions` создаёт переносимое правило в native agent-файле.
+Для Codex доступен `--enforcement strict`: установщик также добавляет project
+hooks, которые нужно проверить и доверить через `/hooks`. Hooks не расширяют
+permissions и не заменяют правила самого skill.
+
+### Ручная установка
+
 Клонируй репозиторий и не отделяй `SKILL.md` от остальных файлов:
 
 ```bash
@@ -92,7 +112,7 @@ python3 skills/execution-state/scripts/statectl.py --help
 
 | Агент | User scope | Project scope | Явный вызов |
 | --- | --- | --- | --- |
-| Codex | `~/.agents/skills/execution-state/` | `.agents/skills/execution-state/` | `$execution-state` |
+| Codex | `~/.agents/skills/execution-state/` | `.agents/skills/execution-state/` | `$execution-state` или project policy |
 | Claude Code | `~/.claude/skills/execution-state/` | `.claude/skills/execution-state/` | `/execution-state` |
 | Gemini CLI | `gemini skills link <PATH>` | `.gemini/skills/execution-state/` или `.agents/skills/execution-state/` | явно попросить активировать `execution-state` |
 | Другой агент | По документации агента | По документации агента | native invocation либо абсолютный путь к `SKILL.md` |
