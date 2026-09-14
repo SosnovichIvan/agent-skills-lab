@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="ai-mark" viewBox="185 115 800 675" role="img" aria-label="AI / Монограмма" fill="currentColor" style="color:var(--logo-ink,#171717)"><style>#ai-mark .piece {transform-box:fill-box;transform-origin:center;animation:ai-assemble 7.8s cubic-bezier(.22,1,.36,1) infinite both;}
+@keyframes ai-assemble {
+ 0%,3% {opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.96)}
+ 22%,76% {opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}
+ 93%,100% {opacity:0;transform:translate(calc(var(--x) * -.25),calc(var(--y) * -.25)) rotate(0deg) scale(.98)}
+}
+@media(prefers-reduced-motion:reduce){#ai-mark .piece{animation:none;opacity:1;transform:none}}</style><path class="piece" d="M257 738H392L562 444L501 331Z" style="--x:-46px;--y:80px;--r:-4deg;animation-delay:0s"/><path class="piece" d="M514 302L594 176L780 498V738H754Z" style="--x:24px;--y:-70px;--r:3deg;animation-delay:.15s"/><path class="piece" d="M482 625H665L623 547H528Z" style="--x:0px;--y:40px;--r:0deg;animation-delay:.32s"/><path class="piece" d="M798 239H911V738H798Z" style="--x:0px;--y:-75px;--r:0deg;animation-delay:.42s"/></svg>

@@ -1,0 +1,451 @@
+{
+  "schema_version": 2,
+  "agent_adapters": {
+    "codex": {
+      "name": "Codex",
+      "description": "Project skills in .agents/skills, instructions in AGENTS.md; strict mode uses trusted Codex hooks.",
+      "skills_dir": ".agents/skills",
+      "agent_file": "AGENTS.md",
+      "strict_enforcement": "codex-hooks"
+    },
+    "claude": {
+      "name": "Claude Code",
+      "description": "Project skills and instructions in Claude Code native locations; instruction enforcement only.",
+      "skills_dir": ".claude/skills",
+      "agent_file": "CLAUDE.md",
+      "strict_enforcement": null
+    },
+    "gemini": {
+      "name": "Gemini CLI",
+      "description": "Project skills and instructions in Gemini CLI native locations; instruction enforcement only.",
+      "skills_dir": ".gemini/skills",
+      "agent_file": "GEMINI.md",
+      "strict_enforcement": null
+    },
+    "generic": {
+      "name": "Другой агент",
+      "description": "Пользователь указывает каталог skills и файл инструкций согласно документации своего агента.",
+      "skills_dir": ".agents/skills",
+      "agent_file": "AGENTS.md",
+      "strict_enforcement": null
+    }
+  },
+  "skills": [
+    {
+      "id": "execution-state",
+      "name": "Execution State",
+      "description": "Ведёт компактное состояние длинной агентной задачи и уменьшает повторную передачу истории.",
+      "source": "skills/execution-state",
+      "mode": "bundled",
+      "activation": {
+        "default_scope": "all_tasks",
+        "supported_scopes": [
+          "explicit",
+          "dependent_tasks",
+          "all_tasks"
+        ]
+      },
+      "options": []
+    },
+    {
+      "id": "ui-ux-design",
+      "name": "UI/UX Design",
+      "description": "Локальный поиск и применение UI/UX-рекомендаций: visual direction, design systems, accessibility, interaction, responsive layout, typography, color и charts.",
+      "source": "skills/ui-ux-design",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "frontend-engineering",
+      "name": "Frontend Engineering",
+      "description": "Реализация frontend-сценариев с архитектурой, доступностью, API и проверками выбранного стека.",
+      "source": "skills/frontend-engineering",
+      "mode": "modular",
+      "common_references": [
+        "references/common/architecture.md",
+        "references/common/code-conventions.md",
+        "references/common/delivery.md",
+        "references/common/scenario-contract.md"
+      ],
+      "selection_groups": [
+        {
+          "id": "language",
+          "name": "Язык",
+          "description": "Выбери один или несколько языков целевого frontend workspace.",
+          "min": 1
+        },
+        {
+          "id": "framework",
+          "name": "Framework",
+          "description": "Выбери framework или пропусти для framework-neutral проекта.",
+          "min": 0
+        },
+        {
+          "id": "structure",
+          "name": "Структура кода",
+          "description": "Выбери одну встроенную структуру или укажи собственный Markdown-файл.",
+          "min": 1,
+          "max": 1,
+          "allow_custom_file": true
+        }
+      ],
+      "options": [
+        {
+          "id": "javascript",
+          "kind": "language",
+          "group": "language",
+          "name": "JavaScript",
+          "description": "Runtime contracts, modules и проверки JavaScript frontend.",
+          "references": [
+            "references/options/javascript.md"
+          ]
+        },
+        {
+          "id": "typescript",
+          "kind": "language",
+          "group": "language",
+          "name": "TypeScript",
+          "description": "Строгая типизация, generated contracts и безопасное сужение данных.",
+          "references": [
+            "references/options/typescript.md"
+          ]
+        },
+        {
+          "id": "react",
+          "kind": "framework",
+          "group": "framework",
+          "name": "React",
+          "description": "Components, hooks, state ownership, routing и async UI.",
+          "references": [
+            "references/options/react.md"
+          ]
+        },
+        {
+          "id": "nextjs",
+          "kind": "framework",
+          "group": "framework",
+          "name": "Next.js",
+          "description": "App/Pages Router, server-client boundaries, caching и rendering.",
+          "references": [
+            "references/options/nextjs.md"
+          ],
+          "requires": [
+            "react"
+          ]
+        },
+        {
+          "id": "vue",
+          "kind": "framework",
+          "group": "framework",
+          "name": "Vue",
+          "description": "Vue reactivity, Composition API, components и state ownership.",
+          "references": [
+            "references/options/vue.md"
+          ]
+        },
+        {
+          "id": "nuxt",
+          "kind": "framework",
+          "group": "framework",
+          "name": "Nuxt",
+          "description": "Nuxt SSR, routing, data loading и runtime boundaries.",
+          "references": [
+            "references/options/nuxt.md"
+          ],
+          "requires": [
+            "vue"
+          ]
+        },
+        {
+          "id": "angular",
+          "kind": "framework",
+          "group": "framework",
+          "name": "Angular",
+          "description": "DI, signals/RxJS, forms, router и Angular CLI checks.",
+          "references": [
+            "references/options/angular.md"
+          ],
+          "requires": [
+            "typescript"
+          ]
+        },
+        {
+          "id": "svelte",
+          "kind": "framework",
+          "group": "framework",
+          "name": "Svelte",
+          "description": "Svelte reactivity, component contracts, stores и lifecycle.",
+          "references": [
+            "references/options/svelte.md"
+          ]
+        },
+        {
+          "id": "sveltekit",
+          "kind": "framework",
+          "group": "framework",
+          "name": "SvelteKit",
+          "description": "SvelteKit SSR, routes, load/actions и server-client boundaries.",
+          "references": [
+            "references/options/sveltekit.md"
+          ],
+          "requires": [
+            "svelte"
+          ]
+        },
+        {
+          "id": "structure-fsd",
+          "kind": "structure",
+          "group": "structure",
+          "name": "Feature-Sliced Design",
+          "description": "Актуальные layers, slices, segments, import rule и public API FSD.",
+          "references": [
+            "references/options/structure-fsd.md"
+          ]
+        },
+        {
+          "id": "structure-flexible",
+          "kind": "structure",
+          "group": "structure",
+          "name": "Flexible logic-based",
+          "description": "Гибкие границы app/routes/features/shared с группировкой по продуктовой логике.",
+          "references": [
+            "references/options/structure-flexible.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backend-engineering",
+      "name": "Backend Engineering",
+      "description": "Реализация API, domain logic, persistence, безопасности и эксплуатации backend-сервисов.",
+      "source": "skills/backend-engineering",
+      "mode": "modular",
+      "common_references": [
+        "references/common/architecture.md",
+        "references/common/reliability.md",
+        "references/common/service-changes.md"
+      ],
+      "options": [
+        {
+          "id": "go",
+          "kind": "language",
+          "name": "Go",
+          "description": "Context, errors, concurrency, resources и Go toolchain.",
+          "references": [
+            "references/options/go.md"
+          ]
+        },
+        {
+          "id": "node-typescript",
+          "kind": "language-framework",
+          "name": "Node.js / TypeScript",
+          "description": "Express, Fastify или NestJS, async I/O и runtime validation.",
+          "references": [
+            "references/options/node-typescript.md"
+          ]
+        },
+        {
+          "id": "python",
+          "kind": "language-framework",
+          "name": "Python / FastAPI / Django",
+          "description": "Sync/async boundaries, schemas, ORM и Python checks.",
+          "references": [
+            "references/options/python.md"
+          ]
+        },
+        {
+          "id": "spring-boot",
+          "kind": "language-framework",
+          "name": "Java / Spring Boot",
+          "description": "DI, transactions, MVC/reactive boundaries и Maven/Gradle.",
+          "references": [
+            "references/options/spring-boot.md"
+          ]
+        },
+        {
+          "id": "aspnet-core",
+          "kind": "language-framework",
+          "name": "C# / ASP.NET Core",
+          "description": "DI lifetimes, cancellation, middleware и EF Core.",
+          "references": [
+            "references/options/aspnet-core.md"
+          ]
+        },
+        {
+          "id": "laravel",
+          "kind": "language-framework",
+          "name": "PHP / Laravel",
+          "description": "Validation, policies, Eloquent, migrations и jobs.",
+          "references": [
+            "references/options/laravel.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "skill-authoring",
+      "name": "Skill Authoring",
+      "description": "Создание и сопровождение навыков, references и каталога этого репозитория.",
+      "source": "skills/skill-authoring",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "frontend-review",
+      "name": "Frontend Review",
+      "description": "Ревью frontend-кода с доказательствами функциональных регрессий.",
+      "source": "skills/frontend-review",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "backend-review",
+      "name": "Backend Review",
+      "description": "Ревью контрактов, авторизации, конкурентности и отказов сервисов.",
+      "source": "skills/backend-review",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "database-engineering",
+      "name": "Database Engineering",
+      "description": "Схемы, SQL, индексы, миграции и backfill реляционных БД.",
+      "source": "skills/database-engineering",
+      "mode": "modular",
+      "options": [
+        {
+          "id": "postgresql",
+          "kind": "database",
+          "group": "database",
+          "name": "PostgreSQL",
+          "description": "Правила для PostgreSQL",
+          "references": [
+            "references/options/postgresql.md"
+          ]
+        },
+        {
+          "id": "mysql",
+          "kind": "database",
+          "group": "database",
+          "name": "MySQL / InnoDB",
+          "description": "Правила для MySQL / InnoDB",
+          "references": [
+            "references/options/mysql.md"
+          ]
+        },
+        {
+          "id": "sqlite",
+          "kind": "database",
+          "group": "database",
+          "name": "SQLite",
+          "description": "Правила для SQLite",
+          "references": [
+            "references/options/sqlite.md"
+          ]
+        }
+      ],
+      "common_references": [
+        "references/common/migration.md",
+        "references/common/query-plan.md"
+      ],
+      "selection_groups": [
+        {
+          "id": "database",
+          "name": "СУБД",
+          "description": "Выбери движки целевых проектов.",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "database-review",
+      "name": "Database Review",
+      "description": "Ревью SQL, миграций, изоляции данных и совместимости rollout.",
+      "source": "skills/database-review",
+      "mode": "modular",
+      "options": [
+        {
+          "id": "postgresql",
+          "kind": "database",
+          "group": "database",
+          "name": "PostgreSQL",
+          "description": "Правила для PostgreSQL",
+          "references": [
+            "references/options/postgresql.md"
+          ]
+        },
+        {
+          "id": "mysql",
+          "kind": "database",
+          "group": "database",
+          "name": "MySQL / InnoDB",
+          "description": "Правила для MySQL / InnoDB",
+          "references": [
+            "references/options/mysql.md"
+          ]
+        },
+        {
+          "id": "sqlite",
+          "kind": "database",
+          "group": "database",
+          "name": "SQLite",
+          "description": "Правила для SQLite",
+          "references": [
+            "references/options/sqlite.md"
+          ]
+        }
+      ],
+      "common_references": [
+        "references/common/rollout-review.md"
+      ],
+      "selection_groups": [
+        {
+          "id": "database",
+          "name": "СУБД",
+          "description": "Выбери движки целевых проектов.",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "project-architecture",
+      "name": "Project Architecture",
+      "description": "Границы системы, контракты, ADR и план реализации/перехода.",
+      "source": "skills/project-architecture",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "content-writing",
+      "name": "Content Writing",
+      "description": "Создание и редактура продуктовых, маркетинговых и технических текстов.",
+      "source": "skills/content-writing",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "ux-writing",
+      "name": "UX Writing",
+      "description": "Тексты действий, форм, ошибок и состояний интерфейса.",
+      "source": "skills/ux-writing",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "brand-logo-design",
+      "name": "Brand Logo Design",
+      "description": "Концепция логотипа, векторный мастер и варианты использования.",
+      "source": "skills/brand-logo-design",
+      "mode": "bundled",
+      "options": []
+    },
+    {
+      "id": "icon-system",
+      "name": "Icon System",
+      "description": "Подбор, создание и интеграция согласованного набора SVG-иконок.",
+      "source": "skills/icon-system",
+      "mode": "bundled",
+      "options": []
+    }
+  ]
+}

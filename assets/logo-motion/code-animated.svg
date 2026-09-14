@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="code-mark" viewBox="225 185 775 560" role="img" aria-label="Code / Разработка" fill="currentColor" style="color:var(--logo-ink,#171717)"><style>#code-mark .piece {transform-box:fill-box;transform-origin:center;animation:code-assemble 7.8s cubic-bezier(.22,1,.36,1) infinite both;}
+@keyframes code-assemble {
+ 0%,3% {opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(.96)}
+ 22%,76% {opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}
+ 93%,100% {opacity:0;transform:translate(calc(var(--x) * -.25),calc(var(--y) * -.25)) rotate(0deg) scale(.98)}
+}
+@media(prefers-reduced-motion:reduce){#code-mark .piece{animation:none;opacity:1;transform:none}}</style><path class="piece" d="M293 468L517 271V373L405 469L500 557L465 639Z" style="--x:70px;--y:0px;--r:-5deg;animation-delay:0s"/><path class="piece" d="M758 297L936 469L712 662V561L822 469L724 382Z" style="--x:-70px;--y:0px;--r:5deg;animation-delay:.10s"/><path class="piece" d="M649 255H744L575 677H479Z" style="--x:0px;--y:38px;--r:-16deg;animation-delay:.25s"/></svg>

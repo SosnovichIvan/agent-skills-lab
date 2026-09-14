@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">Agent Skills Lab</title>
+  <rect width="96" height="96" rx="22" fill="#0f172a"/>
+  <path d="M26 31h44v10H26zM26 47h29v10H26zM26 63h44v10H26z" fill="#38bdf8"/>
+  <circle cx="67" cy="52" r="11" fill="#a78bfa"/>
+</svg>
